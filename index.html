@@ -217,7 +217,7 @@ pre { max-height: 150px; overflow: auto; font: 11.5px/1.5 var(--mono); color: va
   <!-- ================= TRAIN ================= -->
   <div id="tab-train" class="wrap" style="padding:0">
     <section class="panel" id="homeView">
-      <div class="head"><div><h2>Pick today's session</h2><span class="which" id="progName"></span></div><button id="btnFree">Free lift</button></div>
+      <div class="head"><div><h2>Pick today's session</h2><span class="which" id="progName"></span></div><div class="row"><button id="btnTest">Test trial</button><button id="btnFree">Free lift</button></div></div>
       <div id="homeRec" hidden></div>
       <div id="weeks" style="display:grid;gap:18px"></div>
     </section>
@@ -581,15 +581,17 @@ function pickNext(after) {
 function startSet() {
   const d = day();
   let set;
-  if (next && d && view !== "free") {
+  if (next && d && !isLoose()) {
     const ex = d.exercises[next.e], st = ex.sets[next.s];
     set = { id: Date.now(), lift: ex.lift, name: ex.name, label: st.label, load: +$("dockLoad").value || planLoad(ex, st) || 0,
             plan: { pid: activePid, w: wk, wn: week().name, d: dy, e: next.e, s: next.s }, target: st.reps, week: week().name, day: dy + 1,
             date: new Date().toISOString(), demo: false, done: false, reps: [] };
     const old = resultFor(next.e, next.s); if (old && !old.done) log.splice(log.indexOf(old), 1);
   } else {
-    set = { id: Date.now(), lift: "Squat", name: "Free set", label: "", load: +$("dockLoad").value || 0, plan: null, target: 0,
-            date: new Date().toISOString(), demo: false, done: false, reps: [] };
+    const test = view === "test";
+    set = { id: Date.now(), lift: test ? testLift : "Squat", name: test ? "Test set" : "Free set", label: "", load: +$("dockLoad").value || 0, plan: null, target: 0,
+            date: new Date().toISOString(), demo: false, done: false, test, reps: [] };
+    if (test) testLog("Set started");
   }
   log.push(set); active = set; sel = null; msg("");
   if (hr.now) { set.hrStart = hr.now; set.hrPeak = hr.now; }
@@ -597,6 +599,7 @@ function startSet() {
 }
 function endSet(auto) {
   const set = active; active = null;
+  if (set && set.test) testLog(`Set ended: ${set.reps.length} reps`);
   if (set) {
     if (!set.reps.length) log.splice(log.indexOf(set), 1);
     else {
@@ -613,6 +616,36 @@ function endSet(auto) {
   save(); render(false);
 }
 
+// ---------------- test trial
+let testLift = "Squat", testEvents = [];
+const TEST_ITEMS = [
+  ["conn", "Puck connects", "Tap Connect puck at the top"],
+  ["cmd", "Firmware v0.7 features available", "Needs puck firmware v0.7+"],
+  ["bat", "Battery reading received", "Arrives right after connecting"],
+  ["tap2", "Double-tap detected", "Two firm knocks on the puck, about ¼ s apart"],
+  ["rep", "Rep counted", "Start a set, then lift the bar (or the puck) at least 20 cm"],
+  ["phases", "Down · pause · up timing", "Lower, pause briefly, then lift"],
+  ["tilt", "Bar tilt measured", "Comes with each rep"],
+  ["path", "Bar path received", "Comes a moment after each rep"],
+  ["tap3", "Triple-tap deletes the last rep", "Three quick knocks after a rep"],
+  ["offline", "Offline reps imported", "Disconnect, do 2 reps, reconnect"]];
+let testOk = {};
+const isLoose = () => view === "free" || view === "test";
+function testMark(k) { if (!testOk[k]) { testOk[k] = true; testLog("✓ " + TEST_ITEMS.find(x => x[0] === k)[1]); } }
+function testLog(t) {
+  testEvents.unshift({ at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }), t });
+  testEvents = testEvents.slice(0, 40);
+  if (view === "test" && tab === "train") { const b = $("dayView"); if (b) b.innerHTML = testPanel(); }
+}
+function testPanel() {
+  const done = TEST_ITEMS.filter(x => testOk[x[0]]).length;
+  return `<div class="dayhead"><span class="daynum" style="font-size:34px">T</span><div><h3>Test trial</h3><span class="which">${done} of ${TEST_ITEMS.length} checks passed · test sets stay out of your program and history</span></div></div>
+    <div class="row" style="margin-top:6px"><span class="field">Figure for the bar path</span><div class="chips" id="testLift">${["Squat", "Bench", "Deadlift"].map(l => `<button data-tl="${l}" aria-pressed="${l === testLift}">${l}</button>`).join("")}</div></div>
+    <div class="ex"><h3>Checklist</h3><div class="acc">${TEST_ITEMS.map(([k, name, hint]) => `<div><span>${testOk[k] ? '<span class="check">✓</span>' : '<span style="color:var(--muted)">○</span>'} ${esc(name)}</span><span>${testOk[k] ? "passed" : esc(hint)}</span></div>`).join("")}</div></div>
+    <div class="row"><button data-tact="find">Find puck</button><button data-tact="sync">Get saved reps</button><button data-tact="clear">Clear test sets</button><button data-tact="reset">Reset checklist</button></div>
+    <div class="ex"><h3>Live events</h3><div class="acc" style="max-height:260px;overflow:auto">${testEvents.map(e => `<div><span>${esc(e.t)}</span><span>${e.at}</span></div>`).join("") || '<p class="note">Nothing yet. Connect the puck and try a double-tap.</p>'}</div></div>`;
+}
+
 async function sendCmd(t) {
   if (!cmdChar) return false;
   try { await cmdChar.writeValue(new TextEncoder().encode(t)); return true; } catch (e) { return false; }
@@ -623,11 +656,13 @@ function repExtras(line) {
   return x;
 }
 function tapStart() {
+  testMark("tap2");
   if (active) { endSet(false); msg("Set ended by double-tap.", "good"); beep(); return; }
   if (view === "home") { const u = upNextDay(); if (u) { wk = u.w; dy = u.d; view = "day"; pickNext(); } else view = "free"; }
   tab = "train"; startSet(); msg("Set started by double-tap. Lift when ready.", "good"); beep();
 }
 function tapUndo() {
+  testMark("tap3");
   const set = active && active.reps.length ? active : lastRepSet;
   if (!set || !set.reps.length) return;
   const r = set.reps.pop(); recalc(set);
@@ -647,6 +682,7 @@ function importOffline() {
       at: new Date(when).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
   });
   let n = 0; groups.forEach(g => { recalc(g); log.push(g); n += g.reps.length; });
+  if (n) testMark("offline");
   log.sort((a, b) => a.date < b.date ? -1 : 1);
   save(); render(false);
   sendCmd("CLEAR").then(() => sendCmd("TIME " + Math.floor(Date.now() / 1000)));
@@ -659,7 +695,7 @@ function handleLine(line, demo = false) {
   let m;
   if (/^TAP 2/.test(line)) { tapStart(); return; }
   if (/^TAP 3/.test(line)) { tapUndo(); return; }
-  if (/^SLEEP/.test(line)) { setConn("Puck asleep · tap it to wake", false); return; }
+  if (/^SLEEP/.test(line)) { testLog("Puck went to sleep"); setConn("Puck asleep · tap it to wake", false); return; }
   if (/^CLEARED/.test(line)) return;
   m = line.match(/^SYNC (\d+) (-?\d+)/);
   if (m) { offline = { n: +m[1], now: +m[2], base: Date.now(), lines: [] }; return; }
@@ -667,7 +703,7 @@ function handleLine(line, demo = false) {
   m = line.match(/^O (-?\d+) (S.*)$/);
   if (m) { if (offline) offline.lines.push({ ts: +m[1], line: m[2] }); return; }
   m = line.match(/^BAT\s+([\d.]+)V\s+(\d+)%/);
-  if (m) { const b = $("bat"); b.textContent = `Battery ${m[2]}%`; b.title = `${(+m[1]).toFixed(2)} V`; b.className = "pill" + (+m[2] > 20 ? " on" : ""); return; }
+  if (m) { testMark("bat"); const b = $("bat"); b.textContent = `Battery ${m[2]}%`; b.title = `${(+m[1]).toFixed(2)} V`; b.className = "pill" + (+m[2] > 20 ? " on" : ""); return; }
   m = line.match(/^P\s+(\d+)\/(\d+)\s*(.*)$/);
   if (m) {
     if (ignoreP) return;
@@ -675,13 +711,13 @@ function handleLine(line, demo = false) {
     if (k === 1) pendingPath = { n, pts: [] };
     if (!pendingPath) return;
     m[3].trim().split(/\s+/).forEach(t => { const [x, y] = t.split(",").map(Number); if (isFinite(x) && isFinite(y)) pendingPath.pts.push([x, y]); });
-    if (k === n) { const r = lastRepSet && lastRepSet.reps[lastRepSet.reps.length - 1]; if (r) { r.path = pendingPath.pts; save(); render(false); } pendingPath = null; }
+    if (k === n) { const r = lastRepSet && lastRepSet.reps[lastRepSet.reps.length - 1]; if (r) { r.path = pendingPath.pts; testMark("path"); save(); render(false); } pendingPath = null; }
     return;
   }
   m = line.match(/^S(\d+)\s+R(\d+)\s+MV\s+([-\d.]+)\s+PV\s+([-\d.]+)\s+ROM\s+([-\d.]+)\s+T\s+([-\d.]+)/);
   if (!m) return;
   if (!active) {
-    ignoreP = true; pendingPath = null; raw("  ↑ ignored: no set running");
+    ignoreP = true; pendingPath = null; raw("  ↑ ignored: no set running"); testLog("Rep seen but ignored (no set running)");
     msg("Movement ignored because no set is running. Tap Start set before you lift."); return;
   }
   ignoreP = false;
@@ -689,6 +725,8 @@ function handleLine(line, demo = false) {
   set.reps.push({ r: set.reps.length + 1, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line),
                   at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
   recalc(set); lastRepSet = set;
+  { const r = set.reps[set.reps.length - 1]; testMark("rep"); if (r.tut != null) testMark("phases"); if (r.tilt != null) testMark("tilt");
+    testLog(`Rep ${r.r}: ${r.mv.toFixed(2)} m/s${r.tut != null ? ` · down ${r.ecc.toFixed(1)} s, pause ${r.pause.toFixed(1)} s` : ""}${r.tilt != null ? ` · tilt ${Math.abs(r.tilt).toFixed(1)}°` : ""}`); }
   if (set.target && set.reps.length >= set.target) endSet(true); else { save(); render(true); }
   const lb = $("liveBox"); lb.classList.remove("flash"); void lb.offsetWidth; lb.classList.add("flash");
 }
@@ -697,9 +735,10 @@ function handleLine(line, demo = false) {
 function renderTrain(fresh) {
   const p = prog();
   const w = week();
-  $("dayChips").hidden = view === "free";
+  $("dayChips").hidden = isLoose();
   $("dayChips").innerHTML = w ? w.days.map((d, i) => `<button data-d="${i}" aria-pressed="${i === dy}">D${i + 1}</button>`).join("") : "";
   const d = day(), box = $("dayView");
+  if (view === "test") { box.innerHTML = testPanel(); return; }
   if (!d || view === "free") { box.innerHTML = `<div class="dayhead"><span class="daynum">·</span><div><h3>Free lift</h3><span class="which">Set the load below, tap Start set, and lift. Reps keep logging until you tap End set.</span></div></div>`; return; }
   const cut = +$("vlCut").value;
   let h = `<div class="dayhead"><span class="daynum">${dy + 1}</span><div><h3>${esc(d.title || "Day " + (dy + 1))}</h3><span class="which">${esc(w.name)}</span></div></div>`;
@@ -741,15 +780,15 @@ function renderDock() {
     return;
   }
   $("dockLoad").disabled = false;
-  if (next && d && view !== "free") {
+  if (next && d && !isLoose()) {
     const ex = d.exercises[next.e], st = ex.sets[next.s], ld = planLoad(ex, st);
     $("dockLabel").textContent = `Up next · ${st.label}`;
     $("dockWhat").textContent = `${ex.name} · ${st.reps} × ${ld != null ? kg(ld) + " kg" : "RPE " + (st.rpe || "?")}`;
     if (document.activeElement !== $("dockLoad")) $("dockLoad").value = ld != null ? ld : "";
   } else {
-    const free = !d || view === "free";
-    $("dockLabel").textContent = free ? "Free lift" : "All barbell sets done";
-    $("dockWhat").textContent = free ? "Set the load, then Start set" : "Tap any set to redo it";
+    const free = !d || isLoose();
+    $("dockLabel").textContent = view === "test" ? "Test trial · nothing here is saved to your program" : free ? "Free lift" : "All barbell sets done";
+    $("dockWhat").textContent = view === "test" ? "Start set, or double-tap the puck" : free ? "Set the load, then Start set" : "Tap any set to redo it";
   }
   b.textContent = "Start set";
 }
@@ -1129,9 +1168,9 @@ function renderPastWeeks() {
 }
 function renderHistory() {
   renderPastWeeks();
-  const box = $("sets"), cut = +$("vlCut").value; $("noSets").hidden = log.some(s => s.reps.length);
+  const box = $("sets"), cut = +$("vlCut").value; $("noSets").hidden = log.some(s => s.reps.length && !s.test);
   const open = new Set([...box.querySelectorAll("details[open]")].map(d => d.dataset.id));
-  box.innerHTML = [...log].reverse().filter(s => s.reps.length).map((s, k) => {
+  box.innerHTML = [...log].reverse().filter(s => s.reps.length && !s.test).map((s, k) => {
     const rows = s.reps.map((r, j) => { const dd = drift(shownPath(r, s.lift));
       return `<tr class="rep${sel && sel.id === s.id && sel.r === j ? " sel" : ""}" data-id="${s.id}" data-r="${j}"><td>R${r.r}</td><td>${r.mv.toFixed(2)}</td><td>${r.pv.toFixed(2)}</td><td>${Math.round(r.rom * 100)}</td><td>${dd == null ? "–" : (dd / 10).toFixed(1)}</td><td>${r.ecc != null ? r.ecc.toFixed(1) : "–"}</td><td>${r.pause != null ? r.pause.toFixed(1) : "–"}</td><td>${r.tilt != null ? Math.abs(r.tilt).toFixed(1) : "–"}</td><td class="${r.vl >= cut ? "vlhi" : ""}">${r.vl ? "−" + r.vl + "%" : "0%"}</td><td><button class="del" data-del="${s.id},${j}" aria-label="Delete rep ${r.r}">✕</button></td></tr>`; }).join("");
     const when = new Date(s.date).toLocaleDateString([], { month: "short", day: "numeric" });
@@ -1176,7 +1215,7 @@ function renderWhoop() {
   }
   // two-week table, joined with your logged bar speed per day
   const byDay = {};
-  log.forEach(s => s.reps.forEach(r => { const k = ymd(s.date); (byDay[k] = byDay[k] || []).push(r.mv); }));
+  log.filter(s => !s.test).forEach(s => s.reps.forEach(r => { const k = ymd(s.date); (byDay[k] = byDay[k] || []).push(r.mv); }));
   const days = new Set([...(D ? (D.recovery || []).map(x => x.date) : []), ...Object.keys(byDay)]);
   const find = (arr, d) => (arr || []).find(x => x.date === d);
   $("wRows").innerHTML = [...days].filter(Boolean).sort().reverse().slice(0, 14).map(d => {
@@ -1286,6 +1325,7 @@ async function openGatt() {
   try { const bat = await svc.getCharacteristic(BAT); bat.addEventListener("characteristicvaluechanged", e => handleLine(dec.decode(e.target.value))); await bat.startNotifications(); handleLine(dec.decode(await bat.readValue())); } catch (e) {}
   try { cmdChar = await svc.getCharacteristic(CMD); } catch (e) { cmdChar = null; }   // older firmware has no commands
   setConn("Connected", true); $("btnConnect").textContent = "Disconnect";
+  testMark("conn"); if (cmdChar) testMark("cmd"); else testLog("Old firmware: no tap / offline features");
   if (cmdChar) { await sendCmd("CUT " + $("vlCut").value); await sendCmd("TAPS " + (puckCfg.taps ? 1 : 0)); await sendCmd("SYNC"); }
   renderPuck();
 }
@@ -1325,6 +1365,16 @@ $("weeks").onclick = e => {
 };
 $("pastWeeks").onclick = e => { const c = e.target.closest(".daycard"); if (c) { tab = "train"; openDay(+c.dataset.w, +c.dataset.d); } };
 $("btnBack").onclick = () => { if (active) { msg("Finish the set first: tap End set."); return; } view = "home"; sel = null; homeWeek = null; msg(""); render(false); window.scrollTo(0, 0); };
+$("btnTest").onclick = () => { view = "test"; next = null; tab = "train"; render(false); window.scrollTo(0, 0); };
+$("dayView").addEventListener("click", e => {
+  const tl = e.target.closest("[data-tl]"); if (tl) { testLift = tl.dataset.tl; [active, lastRepSet].forEach(x => { if (x && x.test) x.lift = testLift; }); save(); render(false); return; }
+  const a = e.target.closest("[data-tact]"); if (!a) return;
+  const k = a.dataset.tact;
+  if (k === "find") sendCmd("LED").then(ok => testLog(ok ? "Sent: find puck" : "Not connected"));
+  if (k === "sync") sendCmd("SYNC").then(ok => testLog(ok ? "Asked the puck for saved reps" : "Not connected"));
+  if (k === "clear") { log = log.filter(s => !s.test || s === active); save(); testLog("Test sets cleared"); render(false); }
+  if (k === "reset") { testOk = {}; testEvents = []; render(false); }
+});
 $("btnFree").onclick = () => { view = "free"; next = null; render(false); window.scrollTo(0, 0); };
 $("dayChips").onclick = e => { const b = e.target.closest("button"); if (!b || active) return; dy = +b.dataset.d; view = "day"; pickNext(); save(); render(false); };
 $("dayView").onclick = e => {
@@ -1352,7 +1402,7 @@ $("clearNo").onclick = () => { $("clearConfirm").hidden = true; };
 $("clearYes").onclick = () => { log = []; active = null; sel = null; lastRepSet = null; $("clearConfirm").hidden = true; $("raw").textContent = ""; pickNext(); save(); render(false); };
 $("btnCsv").onclick = () => {
   const rows = [["date", "week", "day", "exercise", "set", "load_kg", "planned_reps", "rep", "mean_mps", "peak_mps", "rom_m", "up_s", "down_s", "down_mps", "pause_s", "tut_s", "tilt_deg", "vel_loss_pct", "drift_mm", "hr_peak", "example"]];
-  log.forEach(s => s.reps.forEach(r => { const dd = drift(shownPath(r, s.lift)); rows.push([s.date.slice(0, 10), s.week || "", s.day || "", `"${s.name}"`, s.label || "", s.load, s.target || "", r.r, r.mv, r.pv, r.rom, r.t, r.ecc ?? "", r.ev ?? "", r.pause ?? "", r.tut ?? "", r.tilt ?? "", r.vl, dd == null ? "" : Math.round(dd), s.hrPeak || "", s.demo ? "yes" : "no"]); }));
+  log.filter(s => !s.test).forEach(s => s.reps.forEach(r => { const dd = drift(shownPath(r, s.lift)); rows.push([s.date.slice(0, 10), s.week || "", s.day || "", `"${s.name}"`, s.label || "", s.load, s.target || "", r.r, r.mv, r.pv, r.rom, r.t, r.ecc ?? "", r.ev ?? "", r.pause ?? "", r.tut ?? "", r.tilt ?? "", r.vl, dd == null ? "" : Math.round(dd), s.hrPeak || "", s.demo ? "yes" : "no"]); }));
   const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.map(r => r.join(",")).join("\n")], { type: "text/csv" }));
   a.download = "vbt_log_" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); a.remove();
 };
