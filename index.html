@@ -4,157 +4,197 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>VBT Puck Logger</title>
+<meta name="claude:viewport-fit-sides" content="cover">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="theme-color" content="#16181a">
-<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: one column. A sticky status bar, the live rep readout, the current set's bars, then the session log. */
+/* Layout: sticky status bar; set setup strip; live rep readout; velocity chart beside bar path; session log. */
 :root {
-  --bg: #f3f4f1; --panel: #ffffff; --ink: #16181a; --muted: #5e6563; --line: #dde0dc;
-  --accent: #c8102e;           /* IPF red plate */
-  --z-fast: #1f5fbf;           /* blue plate */
-  --z-mid: #e2a500;            /* yellow plate */
-  --z-slow: #1f8a4c;           /* green plate */
-  --warn: #c8102e; --ok: #1f8a4c;
+  --bg: #f2f3f0; --panel: #ffffff; --ink: #16181a; --muted: #5d6462; --line: #dcdfdb; --soft: #eceeea;
+  --accent: #c8102e;            /* IPF red plate */
+  --z-fast: #1f5fbf;            /* blue plate */
+  --z-mid: #d99a00;             /* yellow plate */
+  --z-slow: #1f8a4c;            /* green plate */
+  --warn: #c8102e; --ok: #1f8a4c; --path: #16181a; --path-old: #b9bdb8;
   --display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
   --body: "IBM Plex Sans", "Segoe UI", Roboto, Arial, sans-serif;
   --mono: "IBM Plex Mono", Consolas, Menlo, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #121414; --panel: #1b1e1e; --ink: #eef0ee; --muted: #9aa29f; --line: #2c3130;
-  --accent: #ff4d5e; --z-fast: #5b9bff; --z-mid: #ffc53d; --z-slow: #3fcf7f; --warn: #ff5c6c; --ok: #3fcf7f; color-scheme: dark; } }
+  --bg: #111313; --panel: #1a1d1d; --ink: #eef0ee; --muted: #9aa29f; --line: #2b302f; --soft: #222626;
+  --accent: #ff4d5e; --z-fast: #5b9bff; --z-mid: #ffc53d; --z-slow: #3fcf7f; --warn: #ff5c6c; --ok: #3fcf7f;
+  --path: #eef0ee; --path-old: #4a504e; color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #121414; --panel: #1b1e1e; --ink: #eef0ee; --muted: #9aa29f; --line: #2c3130;
-  --accent: #ff4d5e; --z-fast: #5b9bff; --z-mid: #ffc53d; --z-slow: #3fcf7f; --warn: #ff5c6c; --ok: #3fcf7f; color-scheme: dark; }
+  --bg: #111313; --panel: #1a1d1d; --ink: #eef0ee; --muted: #9aa29f; --line: #2b302f; --soft: #222626;
+  --accent: #ff4d5e; --z-fast: #5b9bff; --z-mid: #ffc53d; --z-slow: #3fcf7f; --warn: #ff5c6c; --ok: #3fcf7f;
+  --path: #eef0ee; --path-old: #4a504e; color-scheme: dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
-body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); }
-.wrap { max-width: 900px; margin: 0 auto; padding-block: 0 48px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 18px; }
-header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
-.bar { max-width: 900px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding-block: 12px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-h1 { font: 800 26px/1 var(--display); letter-spacing: .02em; text-transform: uppercase; margin: 0 auto 0 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); -webkit-text-size-adjust: 100%; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 14px 56px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.bar { max-width: 980px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding-block: 10px; }
+h1 { font: 800 24px/1 var(--display); letter-spacing: .03em; text-transform: uppercase; margin: 0 auto 0 0; }
 h1 span { color: var(--accent); }
-h2 { font: 700 15px/1 var(--display); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+h2 { font: 700 14px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0; }
 button, select, input { font: 600 14px var(--body); color: var(--ink); }
-button { border: 1.5px solid var(--ink); background: transparent; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
-button.primary { background: var(--ink); color: var(--bg); }
+button { border: 1.5px solid var(--line); background: var(--panel); border-radius: 9px; padding: 8px 13px; cursor: pointer; }
+button:hover { border-color: var(--ink); }
+button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--z-fast); outline-offset: 2px; }
-button:disabled { opacity: .45; cursor: default; }
-.pill { font: 600 12px var(--mono); padding: 5px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); white-space: nowrap; }
+.pill { font: 600 12px var(--mono); padding: 5px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); white-space: nowrap; color: var(--muted); }
 .pill.on { border-color: var(--ok); color: var(--ok); }
-.pill.off { color: var(--muted); }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; min-width: 0; }
-.setup { display: flex; flex-wrap: wrap; gap: 12px 18px; align-items: end; }
-.setup label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
-.setup select, .setup input { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; min-width: 0; }
-.setup input { width: 110px; }
-.live { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: stretch; }
-@media (max-width: 640px) { .live { grid-template-columns: 1fr; } }
-.big { display: grid; gap: 4px; }
-.big .num { font: 800 clamp(64px, 16vw, 112px)/.9 var(--display); font-variant-numeric: tabular-nums; }
-.big .unit { font: 700 22px var(--display); color: var(--muted); margin-left: 6px; }
-.big .zone { font: 700 16px var(--display); letter-spacing: .1em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; }
-.dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
-.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
-.stat { border-top: 2px solid var(--line); padding-top: 6px; }
-.stat b { display: block; font: 700 30px/1.05 var(--display); font-variant-numeric: tabular-nums; }
-.stat small { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
-.stat.alert { border-top-color: var(--warn); }
-.stat.alert b { color: var(--warn); }
-.chart { width: 100%; height: 220px; display: block; }
-.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 8px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
+.head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.head > * { min-width: 0; }
+
+/* set setup strip */
+.setup { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.chips { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; }
+.chips button { border: 0; background: transparent; padding: 7px 12px; border-radius: 8px; color: var(--muted); }
+.chips button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.field { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.field input, .field select { background: var(--soft); border: 1px solid transparent; border-radius: 9px; padding: 7px 9px; }
+.field input { width: 84px; font-family: var(--mono); }
+
+/* live */
+.live { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: center; }
+.num { font: 800 clamp(70px, 19vw, 118px)/.88 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.unit { font: 700 22px var(--display); color: var(--muted); margin-left: 6px; }
+.zone { font: 700 15px var(--display); letter-spacing: .12em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; }
+.dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex: none; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
+.stat { border-top: 2px solid var(--line); padding-top: 5px; min-width: 0; }
+.stat b { display: block; font: 700 27px/1.05 var(--display); font-variant-numeric: tabular-nums; }
+.stat small { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
+.stat.alert { border-top-color: var(--warn); } .stat.alert b { color: var(--warn); }
+.which { font-size: 12.5px; color: var(--muted); }
+
+/* charts */
+.charts { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
+svg { display: block; width: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
 .legend span { display: inline-flex; gap: 6px; align-items: center; }
-.tablewrap { overflow-x: auto; }
+.toggles { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); }
+.toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.toggles input { accent-color: var(--ink); width: 16px; height: 16px; }
+
+/* session */
+details.set { border-top: 1px solid var(--line); }
+details.set > summary { list-style: none; cursor: pointer; padding: 11px 2px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+details.set > summary::-webkit-details-marker { display: none; }
+details.set > summary::before { content: "▸"; color: var(--muted); width: 12px; }
+details.set[open] > summary::before { content: "▾"; }
+.sname { font: 700 17px var(--display); letter-spacing: .05em; text-transform: uppercase; }
+.smeta { font: 500 13px var(--mono); color: var(--muted); }
+.tag { font: 700 10.5px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--z-mid); }
+.tablewrap { overflow-x: auto; padding-bottom: 8px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th { text-align: left; font: 600 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-td { padding: 7px 8px; border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 13.5px; white-space: nowrap; }
-tr.sethead td { font: 700 15px var(--display); letter-spacing: .06em; text-transform: uppercase; background: var(--bg); }
-.vlhi { color: var(--warn); font-weight: 600; }
-.note { color: var(--muted); font-size: 13px; }
+th { text-align: right; font: 600 10.5px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 5px 8px; white-space: nowrap; }
+td { text-align: right; padding: 7px 8px; border-top: 1px solid var(--line); font: 500 13.5px var(--mono); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+tbody tr { cursor: pointer; }
+tbody tr:hover td { background: var(--soft); }
+tbody tr.sel td { background: var(--soft); font-weight: 600; }
+.vlhi { color: var(--warn); }
+.note { color: var(--muted); font-size: 12.5px; margin: 0; }
 .msg { border-left: 4px solid var(--z-mid); padding: 10px 14px; background: var(--panel); border-radius: 0 10px 10px 0; }
 .msg.err { border-left-color: var(--warn); }
-.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.demo-tag { font: 700 11px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--z-mid); }
-@media (prefers-reduced-motion: no-preference) { .flash { animation: flash .6s ease-out; } @keyframes flash { from { background: color-mix(in srgb, var(--z-mid) 30%, transparent); } } }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+details.debug summary { cursor: pointer; font-size: 12.5px; color: var(--muted); }
+pre { max-height: 150px; overflow: auto; font: 11.5px/1.5 var(--mono); color: var(--muted); margin: 8px 0 0; white-space: pre-wrap; word-break: break-all; }
+.empty { color: var(--muted); font-size: 13.5px; }
+@media (max-width: 720px) { .live, .charts { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: no-preference) { .flash { animation: flash .7s ease-out; } @keyframes flash { from { background: color-mix(in srgb, var(--z-mid) 26%, var(--panel)); } } }
 </style>
 </head>
 <body>
-<header>
+<header class="gut">
   <div class="bar">
     <h1>VBT <span>Puck</span></h1>
-    <span id="conn" class="pill off">Not connected</span>
-    <span id="bat" class="pill off">Battery –</span>
+    <span id="conn" class="pill">Not connected</span>
+    <span id="bat" class="pill">Battery –</span>
     <button id="btnConnect" class="primary">Connect puck</button>
   </div>
 </header>
 
-<main class="wrap">
+<main class="wrap gut">
   <div id="msg" class="msg" hidden></div>
 
-  <section class="panel">
-    <h2>Next set</h2>
+  <section class="panel" aria-label="Next set">
     <div class="setup">
-      <label for="lift">Lift
-        <select id="lift"><option>Squat</option><option>Bench</option><option>Deadlift</option><option>Other</option></select>
-      </label>
-      <label for="load">Load (kg)<input id="load" type="number" inputmode="decimal" min="0" step="2.5" value="140"></label>
-      <label for="vlCut">Stop at velocity loss<select id="vlCut"><option value="10">10 %</option><option value="20" selected>20 %</option><option value="30">30 %</option><option value="40">40 %</option></select></label>
-      <button id="btnNewSet">Start new set</button>
+      <div class="chips" role="group" aria-label="Lift" id="liftChips">
+        <button data-lift="Squat" aria-pressed="true">Squat</button>
+        <button data-lift="Bench" aria-pressed="false">Bench</button>
+        <button data-lift="Deadlift" aria-pressed="false">Deadlift</button>
+      </div>
+      <label class="field" for="load">Load <input id="load" type="number" inputmode="decimal" min="0" step="2.5" value="140"> kg</label>
+      <label class="field" for="vlCut">Stop at <select id="vlCut"><option value="10">−10 %</option><option value="20" selected>−20 %</option><option value="30">−30 %</option><option value="40">−40 %</option></select></label>
+      <button id="btnNewSet">New set</button>
     </div>
-    <p class="note" style="margin:10px 0 0">The puck also starts a new set by itself after 45 s with no reps. Lift and load are attached to the set when its first rep arrives.</p>
   </section>
 
-  <section class="panel live">
-    <div class="big" id="bigBox">
-      <h2>Last rep · mean velocity</h2>
-      <div><span class="num" id="mv">–</span><span class="unit">m/s</span></div>
-      <div class="zone" id="zone"><span class="dot" style="background:var(--line)"></span>Waiting for a rep</div>
-    </div>
-    <div class="stats">
-      <div class="stat"><small>Peak velocity</small><b id="pv">–</b></div>
-      <div class="stat"><small>Range of motion</small><b id="rom">–</b></div>
-      <div class="stat"><small>Rep time</small><b id="t">–</b></div>
-      <div class="stat" id="vlBox"><small>Velocity loss</small><b id="vl">–</b></div>
+  <section class="panel" id="liveBox" aria-live="polite">
+    <div class="head"><h2 id="liveTitle">Last rep</h2><span id="liveWhich" class="which"></span></div>
+    <div class="live">
+      <div>
+        <div><span class="num" id="mv">–</span><span class="unit">m/s</span></div>
+        <div class="zone" id="zone"><span class="dot" style="background:var(--line)"></span>Mean velocity</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><small>Peak velocity</small><b id="pv">–</b></div>
+        <div class="stat"><small>Range of motion</small><b id="rom">–</b></div>
+        <div class="stat" id="vlBox"><small>Velocity loss</small><b id="vl">–</b></div>
+        <div class="stat"><small>Bar drift (front/back)</small><b id="dx">–</b></div>
+      </div>
     </div>
   </section>
+
+  <div class="charts">
+    <section class="panel">
+      <div class="head"><h2 id="setTitle">Current set</h2><span id="demoTag" class="tag" hidden>Example data</span></div>
+      <svg id="chart" height="230" role="img" aria-label="Mean velocity of each rep in the current set"></svg>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--z-fast)"></i>&gt;0.75 speed</span>
+        <span><i class="dot" style="background:var(--z-mid)"></i>0.50–0.75</span>
+        <span><i class="dot" style="background:var(--z-slow)"></i>0.30–0.50</span>
+        <span><i class="dot" style="background:var(--accent)"></i>&lt;0.30 near max</span>
+      </div>
+      <p class="note" id="cutLegend">Dashed line: stop the set here.</p>
+    </section>
+    <section class="panel">
+      <div class="head"><h2>Bar path</h2><span class="which" id="pathWhich"></span></div>
+      <svg id="path" height="300" role="img" aria-label="Side view of the bar path for the selected rep"></svg>
+      <div class="toggles">
+        <label for="flip"><input type="checkbox" id="flip"> Flip front/back</label>
+        <label for="closeLoop"><input type="checkbox" id="closeLoop" checked> Lockout over start point</label>
+      </div>
+      <p class="note">Side view, grid = 5 cm. Faint lines are the other reps in the set. Front/back is the least certain part of the measurement, so judge the shape and the drift more than single millimetres.</p>
+    </section>
+  </div>
 
   <section class="panel">
-    <div class="row" style="justify-content:space-between"><h2 id="setTitle">Current set</h2><span id="demoTag" class="demo-tag" hidden>Example data</span></div>
-    <svg id="chart" class="chart" role="img" aria-label="Mean velocity of each rep in the current set"></svg>
-    <div class="legend">
-      <span><i class="dot" style="background:var(--z-fast)"></i>&gt; 0.75 m/s speed</span>
-      <span><i class="dot" style="background:var(--z-mid)"></i>0.50–0.75 strength-speed</span>
-      <span><i class="dot" style="background:var(--z-slow)"></i>0.30–0.50 strength</span>
-      <span><i class="dot" style="background:var(--accent)"></i>&lt; 0.30 near max</span>
-      <span id="cutLegend">dashed line = stop at velocity loss</span>
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="row" style="justify-content:space-between">
+    <div class="head">
       <h2>Session</h2>
       <div class="row">
         <button id="btnDemo">Simulate a set</button>
         <button id="btnCsv">Export CSV</button>
-        <button id="btnClear">Clear session</button>
+        <button id="btnClear">Clear</button>
       </div>
     </div>
     <div id="clearConfirm" class="row msg err" hidden>
       <span>Delete every set in this session?</span><button id="clearYes">Delete</button><button id="clearNo">Keep</button>
     </div>
-    <div class="tablewrap"><table>
-      <thead><tr><th>Rep</th><th>Mean m/s</th><th>Peak m/s</th><th>ROM m</th><th>Time s</th><th>Vel. loss</th><th>Time</th></tr></thead>
-      <tbody id="log"></tbody>
-    </table></div>
-    <p class="note">Raw lines from the puck:</p>
-    <pre id="raw" class="note" style="max-height:140px;overflow:auto;font:12px var(--mono);margin:0;white-space:pre-wrap"></pre>
+    <div id="sets"></div>
+    <p class="empty" id="noSets">No sets yet. Connect the puck and lift, or simulate a set.</p>
+    <details class="debug"><summary>Raw lines from the puck</summary><pre id="raw"></pre></details>
   </section>
 </main>
 
@@ -164,118 +204,208 @@ const REP = "6e7c0002-5a1d-4c2b-9f3e-1b2a3c4d5e6f";
 const BAT = "6e7c0003-5a1d-4c2b-9f3e-1b2a3c4d5e6f";
 const $ = id => document.getElementById(id);
 const dec = new TextDecoder();
+const css = () => getComputedStyle(document.documentElement);
+const tok = n => css().getPropertyValue(n).trim();
 
-let sets = [];          // {key, lift, load, demo, reps:[{r,mv,pv,rom,t,vl,at}]}
-let manualOffset = 0;   // bumps when the user presses "Start new set"
-let device = null, lastRaw = "";
+let sets = [];             // {key, lift, load, demo, reps:[{r,mv,pv,rom,t,vl,at,path}]}
+let setOffset = 0, lift = "Squat";
+let sel = null;            // {s, r} selected rep (indexes); null = follow the latest
+let pending = null;        // path lines being assembled
+let device = null;
 
-function load() { try { const s = JSON.parse(localStorage.getItem("vbt-session") || "null"); if (s) { sets = s.sets || []; manualOffset = s.manualOffset || 0; } } catch (e) {} }
-function save() { try { localStorage.setItem("vbt-session", JSON.stringify({ sets, manualOffset })); } catch (e) {} }
+// ---------- storage
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem("vbt-session-v2") || "null");
+    if (s) { sets = s.sets || []; setOffset = s.setOffset || 0; lift = s.lift || "Squat"; $("load").value = s.load ?? 140; $("vlCut").value = s.cut ?? 20; $("flip").checked = !!s.flip; }
+  } catch (e) {}
+}
+function save() {
+  try { localStorage.setItem("vbt-session-v2", JSON.stringify({ sets, setOffset, lift, load: +$("load").value, cut: +$("vlCut").value, flip: $("flip").checked })); } catch (e) {}
+}
 
+// ---------- helpers
 function zone(v) {
-  if (v > 0.75) return ["var(--z-fast)", "Speed"];
-  if (v >= 0.5) return ["var(--z-mid)", "Strength-speed"];
-  if (v >= 0.3) return ["var(--z-slow)", "Strength"];
-  return ["var(--accent)", "Near max"];
+  if (v > 0.75) return ["--z-fast", "Speed"];
+  if (v >= 0.5) return ["--z-mid", "Strength-speed"];
+  if (v >= 0.3) return ["--z-slow", "Strength"];
+  return ["--accent", "Near max"];
 }
 function msg(text, err) { const m = $("msg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); m.hidden = !text; }
-function raw(line) { const r = $("raw"); r.textContent = (line + "\n" + r.textContent).slice(0, 4000); }
+function raw(line) { const r = $("raw"); r.textContent = (line + "\n" + r.textContent).slice(0, 6000); }
+function kg(x) { return Number.isInteger(x) ? String(x) : x.toFixed(1); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 
+// path as displayed: optional loop closure (lockout back over the start) and flip
+function shownPath(rep, liftName) {
+  if (!rep || !rep.path || rep.path.length < 2) return null;
+  const p = rep.path, n = p.length;
+  const close = $("closeLoop").checked && liftName !== "Deadlift";
+  const endX = p[n - 1][0], sgn = $("flip").checked ? -1 : 1;
+  return p.map(([x, y], i) => [sgn * (close ? x - endX * i / (n - 1) : x), y]);
+}
+function drift(path) { if (!path) return null; const xs = path.map(p => p[0]); return Math.max(...xs) - Math.min(...xs); }
+
+// ---------- parsing the puck's lines
 function handleLine(line, demo = false) {
   line = line.trim(); if (!line) return;
   raw(line);
   let m = line.match(/^BAT\s+([\d.]+)V\s+(\d+)%/);
-  if (m) { const b = $("bat"); b.textContent = `Battery ${m[2]}% · ${(+m[1]).toFixed(2)} V`; b.className = "pill " + (+m[2] > 20 ? "on" : "off"); return; }
+  if (m) { const b = $("bat"); b.textContent = `Battery ${m[2]}%`; b.title = `${(+m[1]).toFixed(2)} V`; b.className = "pill" + (+m[2] > 20 ? " on" : ""); return; }
+
+  m = line.match(/^P\s+(\d+)\/(\d+)\s*(.*)$/);
+  if (m) {
+    const k = +m[1], n = +m[2];
+    if (k === 1) pending = { n, pts: [] };
+    if (!pending) return;
+    m[3].trim().split(/\s+/).forEach(t => { const [x, y] = t.split(",").map(Number); if (isFinite(x) && isFinite(y)) pending.pts.push([x, y]); });
+    if (k === n) {
+      const s = sets[sets.length - 1], r = s && s.reps[s.reps.length - 1];
+      if (r) { r.path = pending.pts; save(); render(false); }
+      pending = null;
+    }
+    return;
+  }
+
   m = line.match(/^S(\d+)\s+R(\d+)\s+MV\s+([-\d.]+)\s+PV\s+([-\d.]+)\s+ROM\s+([-\d.]+)\s+T\s+([-\d.]+)\s+VL\s+(-?\d+)%/);
   if (!m) return;
-  const key = (demo ? "D" : "S") + m[1] + "+" + manualOffset;
+  const key = (demo ? "D" : "S") + m[1] + "+" + setOffset;
   let set = sets[sets.length - 1];
-  if (!set || set.key !== key) {
-    set = { key, lift: $("lift").value, load: +$("load").value || 0, demo, reps: [] };
-    sets.push(set);
-  }
-  const rep = { r: set.reps.length + 1, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) };
+  if (!set || set.key !== key) { set = { key, lift, load: +$("load").value || 0, demo, reps: [] }; sets.push(set); }
+  const rep = { r: set.reps.length + 1, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null,
+                at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) };
   const best = Math.max(rep.mv, ...set.reps.map(x => x.mv));
   rep.vl = best > 0 ? Math.round((1 - rep.mv / best) * 100) : 0;
   set.reps.push(rep);
+  sel = null;
   save(); render(true);
 }
 
+// ---------- render
+function current() {
+  if (sel && sets[sel.s] && sets[sel.s].reps[sel.r]) return { si: sel.s, set: sets[sel.s], rep: sets[sel.s].reps[sel.r] };
+  const si = sets.length - 1, set = sets[si];
+  return { si, set, rep: set && set.reps[set.reps.length - 1] };
+}
+
 function render(fresh) {
-  const set = sets[sets.length - 1];
-  const rep = set && set.reps[set.reps.length - 1];
+  const { si, set, rep } = current();
   const cut = +$("vlCut").value;
+  document.querySelectorAll("#liftChips button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lift === lift));
+
+  $("liveTitle").textContent = sel ? "Selected rep" : "Last rep";
+  $("liveWhich").textContent = rep ? `Set ${si + 1} · rep ${rep.r}${sel ? " · tap the latest rep to follow live" : ""}` : "";
   if (rep) {
     $("mv").textContent = rep.mv.toFixed(2);
     const [c, name] = zone(rep.mv);
-    $("zone").innerHTML = `<span class="dot" style="background:${c}"></span>${name}`;
+    $("zone").innerHTML = `<span class="dot" style="background:var(${c})"></span>${name}`;
     $("pv").textContent = rep.pv.toFixed(2) + " m/s";
     $("rom").textContent = Math.round(rep.rom * 100) + " cm";
-    $("t").textContent = rep.t.toFixed(2) + " s";
     $("vl").textContent = rep.vl + " %";
     $("vlBox").classList.toggle("alert", rep.vl >= cut);
-    if (fresh) { const b = $("bigBox"); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); }
+    const d = drift(shownPath(rep, set.lift));
+    $("dx").textContent = d == null ? "–" : (d / 10).toFixed(1) + " cm";
+    if (fresh) { const b = $("liveBox"); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); }
   } else {
-    ["mv","pv","rom","t","vl"].forEach(id => $(id).textContent = "–");
+    ["mv", "pv", "rom", "vl", "dx"].forEach(id => $(id).textContent = "–");
   }
-  $("setTitle").textContent = set ? `Set ${sets.length} · ${set.lift} ${set.load} kg` : "Current set";
+  $("setTitle").textContent = set ? `Set ${si + 1} · ${set.lift} ${kg(set.load)} kg` : "Current set";
   $("demoTag").hidden = !(set && set.demo);
-  drawChart(set, cut);
-  const tb = $("log"); tb.innerHTML = "";
-  sets.slice().reverse().forEach((s, i) => {
-    const n = sets.length - i;
-    const avg = s.reps.reduce((a, r) => a + r.mv, 0) / (s.reps.length || 1);
-    tb.insertAdjacentHTML("beforeend", `<tr class="sethead"><td colspan="7">Set ${n} · ${s.lift} ${s.load} kg · ${s.reps.length} reps · avg ${avg.toFixed(2)} m/s${s.demo ? " · example" : ""}</td></tr>`);
-    s.reps.forEach(r => tb.insertAdjacentHTML("beforeend",
-      `<tr><td>${r.r}</td><td>${r.mv.toFixed(2)}</td><td>${r.pv.toFixed(2)}</td><td>${r.rom.toFixed(2)}</td><td>${r.t.toFixed(2)}</td><td class="${r.vl >= cut ? "vlhi" : ""}">${r.vl} %</td><td>${r.at}</td></tr>`));
-  });
+  drawChart(set, rep, cut);
+  drawPath(set, rep);
+  renderSessions(cut);
 }
 
-function drawChart(set, cut) {
-  const svg = $("chart"), W = svg.clientWidth || 600, H = 220, pl = 40, pr = 12, pt = 14, pb = 28;
-  const css = getComputedStyle(document.documentElement);
-  const ink = css.getPropertyValue("--muted").trim(), line = css.getPropertyValue("--line").trim();
+function drawChart(set, selRep, cut) {
+  const svg = $("chart"), W = svg.clientWidth || 600, H = 230, pl = 38, pr = 8, pt = 18, pb = 24;
+  const ink = tok("--muted"), line = tok("--line");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const reps = set ? set.reps : [];
-  const vmax = Math.max(1.0, ...reps.map(r => r.mv)) ;
+  const vmax = Math.max(1.0, Math.ceil((Math.max(0, ...reps.map(r => r.mv)) + 0.1) * 4) / 4);
   const y = v => pt + (H - pt - pb) * (1 - v / vmax);
   let s = "";
   for (let v = 0; v <= vmax + 1e-9; v += 0.25) {
-    s += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="${line}" stroke-width="1"/>`;
-    s += `<text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" font-family="IBM Plex Mono, monospace" fill="${ink}">${v.toFixed(2)}</text>`;
+    s += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="${line}"/>`;
+    s += `<text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="${ink}">${v.toFixed(2)}</text>`;
   }
-  if (!reps.length) {
-    s += `<text x="${(W + pl) / 2}" y="${H / 2}" text-anchor="middle" font-size="14" fill="${ink}">Connect the puck and lift, or press “Simulate a set”.</text>`;
-    svg.innerHTML = s; return;
-  }
-  const n = Math.max(reps.length, 6), slot = (W - pl - pr) / n, bw = Math.min(56, slot * 0.66);
-  const best = Math.max(...reps.map(r => r.mv));
-  const cutV = best * (1 - cut / 100);
+  if (!reps.length) { svg.innerHTML = s + `<text x="${(W + pl) / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">No reps yet</text>`; return; }
+  const best = Math.max(...reps.map(r => r.mv)), cutV = best * (1 - cut / 100);
+  s += `<line x1="${pl}" x2="${W - pr}" y1="${y(cutV)}" y2="${y(cutV)}" stroke="${tok("--warn")}" stroke-width="1.5" stroke-dasharray="6 5"/>`;
+  const n = Math.max(reps.length, 6), slot = (W - pl - pr) / n, bw = Math.min(54, slot * 0.64);
   reps.forEach((r, i) => {
     const x = pl + slot * i + (slot - bw) / 2;
-    const fill = zone(r.mv)[0].replace(/var\((--[\w-]+)\)/, (_, v) => css.getPropertyValue(v).trim());
-    s += `<rect x="${x}" y="${y(r.mv)}" width="${bw}" height="${y(0) - y(r.mv)}" rx="4" fill="${fill}" opacity="${r.vl >= cut ? 0.55 : 1}"/>`;
-    s += `<text x="${x + bw / 2}" y="${y(r.mv) - 5}" text-anchor="middle" font-size="12" font-weight="600" font-family="IBM Plex Mono, monospace" fill="${ink}">${r.mv.toFixed(2)}</text>`;
-    s += `<text x="${x + bw / 2}" y="${H - 9}" text-anchor="middle" font-size="11" fill="${ink}">R${r.r}</text>`;
+    const isSel = r === selRep;
+    s += `<rect x="${x}" y="${y(r.mv)}" width="${bw}" height="${y(0) - y(r.mv)}" rx="4" fill="${tok(zone(r.mv)[0])}" opacity="${r.vl >= cut ? 0.5 : 1}"${isSel ? ` stroke="${tok("--ink")}" stroke-width="2"` : ""}/>`;
+    s += `<text x="${x + bw / 2}" y="${y(r.mv) - 6}" text-anchor="middle" font-size="11.5" font-weight="600" font-family="IBM Plex Mono, monospace" fill="${tok("--ink")}">${r.mv.toFixed(2)}</text>`;
+    s += `<text x="${x + bw / 2}" y="${H - 7}" text-anchor="middle" font-size="11" fill="${ink}">R${r.r}</text>`;
   });
-  s += `<line x1="${pl}" x2="${W - pr}" y1="${y(cutV)}" y2="${y(cutV)}" stroke="${css.getPropertyValue("--warn").trim()}" stroke-width="1.5" stroke-dasharray="6 5"/>`;
   svg.innerHTML = s;
-  $("cutLegend").textContent = `red dashed line = stop here (−${cut}% → ${cutV.toFixed(2)} m/s)`;
+  $("cutLegend").textContent = `Dashed line: stop the set here (−${cut} % from the best rep, ${cutV.toFixed(2)} m/s).`;
 }
 
-// ---- Bluetooth
-async function connect() {
-  if (!navigator.bluetooth) {
-    msg("This browser can't use Bluetooth. Open this file in Chrome or Edge on Windows, Mac or Android. On iPhone use the free Bluefy browser.", true); return;
+function drawPath(set, selRep) {
+  const svg = $("path"), W = svg.clientWidth || 320, H = 300, pad = 22;
+  const ink = tok("--muted"), line = tok("--line");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const paths = set ? set.reps.map(r => ({ r, p: shownPath(r, set.lift) })).filter(o => o.p) : [];
+  $("pathWhich").textContent = selRep ? `Rep ${selRep.r}` : "";
+  if (!paths.length) {
+    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">${set && set.reps.length ? "No path for this set (needs firmware v0.5)" : "No reps yet"}</text>`;
+    return;
   }
+  // equal scale on both axes, fitted to every rep in the set
+  let xmin = -60, xmax = 60, ymin = 0, ymax = 0;
+  paths.forEach(o => o.p.forEach(([x, y]) => { xmin = Math.min(xmin, x); xmax = Math.max(xmax, x); ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }));
+  const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
+  const span = Math.max((xmax - xmin) / (W - 2 * pad), (ymax - ymin) / (H - 2 * pad)) * 1.08;
+  const X = x => W / 2 + (x - cx) / span, Y = y => H / 2 - (y - cy) / span;
+  let s = "";
+  const g0x = Math.floor((cx - (W / 2) * span) / 50) * 50, g1x = cx + (W / 2) * span;
+  const g0y = Math.floor((cy - (H / 2) * span) / 50) * 50, g1y = cy + (H / 2) * span;
+  for (let gx = g0x; gx <= g1x; gx += 50) s += `<line x1="${X(gx)}" x2="${X(gx)}" y1="0" y2="${H}" stroke="${line}" stroke-width="${gx === 0 ? 1.5 : 1}"/>`;
+  for (let gy = g0y; gy <= g1y; gy += 50) s += `<line x1="0" x2="${W}" y1="${Y(gy)}" y2="${Y(gy)}" stroke="${line}"/>`;
+  const d = p => p.map(([x, y], i) => `${i ? "L" : "M"}${X(x).toFixed(1)} ${Y(y).toFixed(1)}`).join(" ");
+  paths.filter(o => o.r !== selRep).forEach(o => s += `<path d="${d(o.p)}" fill="none" stroke="${tok("--path-old")}" stroke-width="2" stroke-linejoin="round"/>`);
+  const cur = paths.find(o => o.r === selRep);
+  if (cur) {
+    const p = cur.p; let lo = 0; p.forEach(([, y], i) => { if (y < p[lo][1]) lo = i; });
+    s += `<path d="${d(p.slice(0, lo + 1))}" fill="none" stroke="${tok("--muted")}" stroke-width="2.5" stroke-dasharray="5 4" stroke-linejoin="round"/>`;
+    s += `<path d="${d(p.slice(lo))}" fill="none" stroke="${tok(zone(selRep.mv)[0])}" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+    s += `<circle cx="${X(p[0][0])}" cy="${Y(p[0][1])}" r="5" fill="${tok("--path")}"/>`;
+    s += `<circle cx="${X(p[lo][0])}" cy="${Y(p[lo][1])}" r="4" fill="${tok("--panel")}" stroke="${tok("--path")}" stroke-width="2"/>`;
+  }
+  s += `<text x="8" y="${H - 8}" font-size="10.5" fill="${ink}">dashed = down · solid = up</text>`;
+  svg.innerHTML = s;
+}
+
+function renderSessions(cut) {
+  const box = $("sets"); $("noSets").hidden = sets.length > 0;
+  const open = new Set([...box.querySelectorAll("details[open]")].map(d => d.dataset.i));
+  const cur = current();
+  box.innerHTML = sets.map((s, i) => i).reverse().map(i => {
+    const s = sets[i];
+    const avg = s.reps.reduce((a, r) => a + r.mv, 0) / (s.reps.length || 1);
+    const isOpen = open.has(String(i)) || i === sets.length - 1;
+    const rows = s.reps.map((r, j) => {
+      const dd = drift(shownPath(r, s.lift));
+      return `<tr data-s="${i}" data-r="${j}" class="${cur.rep === r ? "sel" : ""}"><td>R${r.r}</td><td>${r.mv.toFixed(2)}</td><td>${r.pv.toFixed(2)}</td><td>${Math.round(r.rom * 100)}</td><td>${dd == null ? "–" : (dd / 10).toFixed(1)}</td><td class="${r.vl >= cut ? "vlhi" : ""}">${r.vl ? "−" + r.vl + "%" : "0%"}</td><td>${esc(r.at)}</td></tr>`;
+    }).join("");
+    return `<details class="set" data-i="${i}"${isOpen ? " open" : ""}><summary><span class="sname">Set ${i + 1} · ${esc(s.lift)} ${kg(s.load)} kg</span><span class="smeta">${s.reps.length} reps · avg ${avg.toFixed(2)} m/s</span>${s.demo ? '<span class="tag">Example</span>' : ""}</summary>
+      <div class="tablewrap"><table><thead><tr><th>Rep</th><th>Mean m/s</th><th>Peak m/s</th><th>ROM cm</th><th>Drift cm</th><th>Loss</th><th>Time</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+  }).join("");
+}
+
+// ---------- Bluetooth
+async function connect() {
+  if (!navigator.bluetooth) { msg("This browser can't use Bluetooth. Use Chrome or Edge on a computer or Android, or the Bluefy browser on iPhone.", true); return; }
   try {
     msg("");
-    device = await navigator.bluetooth.requestDevice({ filters: [{ name: "VBT-Puck" }, { services: [SVC] }], optionalServices: [SVC] });
+    device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }, { name: "VBT-Puck" }], optionalServices: [SVC] });
     device.addEventListener("gattserverdisconnected", onDisconnect);
     await openGatt();
   } catch (e) {
-    if (e.name === "NotFoundError") msg("No puck picked. Make sure it's switched on (or on USB) and close to the computer, then try again.");
-    else if (e.name === "SecurityError") msg("Bluetooth is blocked here. Download vbt_app.html and open the file in Chrome or Edge.", true);
+    if (e.name === "NotFoundError") msg("No puck picked. Switch it on, keep it close, and make sure no other phone or laptop is connected to it.");
+    else if (e.name === "SecurityError") msg("Bluetooth is blocked on this page. Open the app from your GitHub Pages link in Chrome, Edge or Bluefy.", true);
     else msg("Couldn't connect: " + e.message, true);
   }
 }
@@ -284,7 +414,7 @@ async function openGatt() {
   const server = await device.gatt.connect();
   const svc = await server.getPrimaryService(SVC);
   const rep = await svc.getCharacteristic(REP);
-  rep.addEventListener("characteristicvaluechanged", e => { const l = dec.decode(e.target.value); if (l !== lastRaw || true) handleLine(l); lastRaw = l; });
+  rep.addEventListener("characteristicvaluechanged", e => handleLine(dec.decode(e.target.value)));
   await rep.startNotifications();
   try {
     const bat = await svc.getCharacteristic(BAT);
@@ -292,13 +422,14 @@ async function openGatt() {
     await bat.startNotifications();
     handleLine(dec.decode(await bat.readValue()));
   } catch (e) {}
-  setConn("Connected · " + (device.name || "VBT-Puck"), true);
+  setConn("Connected", true);
   $("btnConnect").textContent = "Disconnect";
 }
-function setConn(t, on) { const c = $("conn"); c.textContent = t; c.className = "pill " + (on ? "on" : "off"); }
+function setConn(t, on) { const c = $("conn"); c.textContent = t; c.className = "pill" + (on ? " on" : ""); }
 async function onDisconnect() {
-  setConn("Disconnected · reconnecting", false); $("btnConnect").textContent = "Connect puck";
+  $("btnConnect").textContent = "Connect puck";
   for (let i = 0; i < 5 && device && !device.gatt.connected; i++) {
+    setConn("Reconnecting…", false);
     try { await new Promise(r => setTimeout(r, 1500)); await openGatt(); return; } catch (e) {}
   }
   setConn("Not connected", false);
@@ -308,35 +439,59 @@ $("btnConnect").onclick = () => {
   else connect();
 };
 
-// ---- controls
-$("btnNewSet").onclick = () => { manualOffset++; save(); msg(`Next rep starts set ${sets.length + 1} (${$("lift").value} ${$("load").value} kg).`); };
-$("vlCut").onchange = () => render(false);
+// ---------- controls
+$("liftChips").onclick = e => { const b = e.target.closest("button"); if (!b) return; lift = b.dataset.lift; $("closeLoop").checked = lift !== "Deadlift"; save(); render(false); };
+$("btnNewSet").onclick = () => { setOffset++; sel = null; save(); msg(`The next rep starts set ${sets.length + 1}: ${lift} ${$("load").value} kg.`); };
+["vlCut", "load", "flip", "closeLoop"].forEach(id => $(id).addEventListener("change", () => { save(); render(false); }));
+$("sets").onclick = e => {
+  const tr = e.target.closest("tr[data-s]"); if (!tr) return;
+  const s = +tr.dataset.s, r = +tr.dataset.r;
+  const latest = s === sets.length - 1 && r === sets[s].reps.length - 1;
+  sel = latest ? null : { s, r }; render(false);
+  $("liveBox").scrollIntoView({ behavior: "smooth", block: "nearest" });
+};
 $("btnClear").onclick = () => { $("clearConfirm").hidden = false; };
 $("clearNo").onclick = () => { $("clearConfirm").hidden = true; };
-$("clearYes").onclick = () => { sets = []; manualOffset = 0; save(); $("clearConfirm").hidden = true; $("raw").textContent = ""; render(false); };
+$("clearYes").onclick = () => { sets = []; setOffset = 0; sel = null; save(); $("clearConfirm").hidden = true; $("raw").textContent = ""; render(false); };
 $("btnCsv").onclick = () => {
-  const rows = [["set","lift","load_kg","rep","mean_mps","peak_mps","rom_m","time_s","vel_loss_pct","clock","example"]];
-  sets.forEach((s, i) => s.reps.forEach(r => rows.push([i + 1, s.lift, s.load, r.r, r.mv, r.pv, r.rom, r.t, r.vl, r.at, s.demo ? "yes" : "no"])));
+  const rows = [["set", "lift", "load_kg", "rep", "mean_mps", "peak_mps", "rom_m", "time_s", "vel_loss_pct", "drift_mm", "clock", "example", "path_mm"]];
+  sets.forEach((s, i) => s.reps.forEach(r => {
+    const p = shownPath(r, s.lift), dd = drift(p);
+    rows.push([i + 1, s.lift, s.load, r.r, r.mv, r.pv, r.rom, r.t, r.vl, dd == null ? "" : Math.round(dd), r.at, s.demo ? "yes" : "no", p ? p.map(q => q.map(Math.round).join(":")).join(" ") : ""]);
+  }));
   const blob = new Blob([rows.map(r => r.join(",")).join("\n")], { type: "text/csv" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-  a.download = "vbt_session_" + new Date().toISOString().slice(0, 10) + ".csv"; a.click();
+  a.download = "vbt_session_" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); a.remove();
 };
+
+// simulated set: lines in the same format the puck sends, including the bar path
 let demoN = 0;
 $("btnDemo").onclick = () => {
-  demoN++; manualOffset++;
-  const base = 0.62 + Math.random() * 0.1; let i = 0;
+  demoN++; setOffset++; sel = null;
+  const base = 0.62 + Math.random() * 0.1, depth = lift === "Bench" ? 420 : lift === "Deadlift" ? 560 : 600;
+  let i = 0;
   const tick = () => {
     if (i >= 6) return;
     const mv = Math.max(0.15, base * (1 - 0.055 * i) + (Math.random() - .5) * 0.03);
-    handleLine(`S${900 + demoN} R${i + 1} MV ${mv.toFixed(2)} PV ${(mv * 1.45).toFixed(2)} ROM ${(0.52 + Math.random() * .04).toFixed(2)} T ${(0.55 / mv * 0.9).toFixed(2)} VL 0%`, true);
-    i++; setTimeout(tick, 700);
+    handleLine(`S${900 + demoN} R${i + 1} MV ${mv.toFixed(2)} PV ${(mv * 1.45).toFixed(2)} ROM ${(depth / 1000 + Math.random() * .02).toFixed(2)} T ${(depth / 1000 / mv).toFixed(2)} VL 0% DX 0`, true);
+    const pts = [], fwd = 25 + i * 6, N = 40;
+    for (let k = 0; k < N; k++) {
+      const u = k / (N - 1);
+      const y = lift === "Deadlift" ? depth * (0.5 - 0.5 * Math.cos(Math.PI * u)) : -depth * Math.sin(Math.PI * u);
+      const x = lift === "Bench" ? 70 * Math.sin(Math.PI * Math.min(1, u * 1.6)) * (u < 0.5 ? 1 : 0.6 + 0.4 * Math.cos(Math.PI * (u - .5))) - 30 * u
+              : lift === "Deadlift" ? -fwd * Math.sin(Math.PI * u) * 0.6
+              : fwd * Math.sin(Math.PI * u) * (u < .5 ? 0.7 : 1);
+      pts.push(`${Math.round(x + (Math.random() - .5) * 4)},${Math.round(y)}`);
+    }
+    for (let L = 0; L < 4; L++) handleLine(`P ${L + 1}/4 ` + pts.slice(L * 10, L * 10 + 10).join(" "), true);
+    i++; setTimeout(tick, 650);
   };
   tick();
 };
 window.addEventListener("resize", () => render(false));
 
 load(); render(false);
-if (!navigator.bluetooth) msg("Bluetooth isn't available in this browser. Use Chrome or Edge on Windows, Mac or Android, or Bluefy on iPhone. “Simulate a set” still works.");
+if (!navigator.bluetooth) msg("Bluetooth isn't available in this browser. On iPhone open this page in the Bluefy browser; on a computer or Android use Chrome or Edge. Simulate a set works anywhere.");
 </script>
 </body>
 </html>
