@@ -11,73 +11,135 @@
 <meta name="theme-color" content="#16181a">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
-/* Layout: sticky status bar; set setup strip; live rep readout; velocity chart beside bar path; session log. */
+/* Layout: sticky status bar + tabs. Train = day plan (coach-sheet table with a live VEL column), live readout, charts, and a sticky "up next" bar. Program = weeks, maxes, import, builder. History = every set logged. */
 :root {
   --bg: #f2f3f0; --panel: #ffffff; --ink: #16181a; --muted: #5d6462; --line: #dcdfdb; --soft: #eceeea;
-  --accent: #c8102e;            /* IPF red plate */
-  --z-fast: #1f5fbf;            /* blue plate */
-  --z-mid: #d99a00;             /* yellow plate */
-  --z-slow: #1f8a4c;            /* green plate */
-  --warn: #c8102e; --ok: #1f8a4c; --path: #16181a; --path-old: #b9bdb8;
+  --accent: #c8102e; --z-fast: #1f5fbf; --z-mid: #d99a00; --z-slow: #1f8a4c;
+  --warn: #c8102e; --ok: #1f8a4c; --path: #16181a; --path-old: #b9bdb8; --hl: #fff4d1;
   --display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
   --body: "IBM Plex Sans", "Segoe UI", Roboto, Arial, sans-serif;
   --mono: "IBM Plex Mono", Consolas, Menlo, monospace;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
-  --bg: #111313; --panel: #1a1d1d; --ink: #eef0ee; --muted: #9aa29f; --line: #2b302f; --soft: #222626;
+  --bg: #111313; --panel: #1a1d1d; --ink: #eef0ee; --muted: #9aa29f; --line: #2b302f; --soft: #232727;
   --accent: #ff4d5e; --z-fast: #5b9bff; --z-mid: #ffc53d; --z-slow: #3fcf7f; --warn: #ff5c6c; --ok: #3fcf7f;
-  --path: #eef0ee; --path-old: #4a504e; color-scheme: dark; } }
+  --path: #eef0ee; --path-old: #4a504e; --hl: #3a3218; color-scheme: dark; } }
 :root[data-theme="dark"] {
-  --bg: #111313; --panel: #1a1d1d; --ink: #eef0ee; --muted: #9aa29f; --line: #2b302f; --soft: #222626;
+  --bg: #111313; --panel: #1a1d1d; --ink: #eef0ee; --muted: #9aa29f; --line: #2b302f; --soft: #232727;
   --accent: #ff4d5e; --z-fast: #5b9bff; --z-mid: #ffc53d; --z-slow: #3fcf7f; --warn: #ff5c6c; --ok: #3fcf7f;
-  --path: #eef0ee; --path-old: #4a504e; color-scheme: dark; }
+  --path: #eef0ee; --path-old: #4a504e; --hl: #3a3218; color-scheme: dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 html, body { margin: 0; }
 body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--body); -webkit-text-size-adjust: 100%; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 .gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-.wrap { max-width: 980px; margin: 0 auto; padding-block: 14px 56px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 14px 120px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
-.bar { max-width: 980px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding-block: 10px; }
+.bar { max-width: 980px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding-block: 10px 8px; }
 h1 { font: 800 24px/1 var(--display); letter-spacing: .03em; text-transform: uppercase; margin: 0 auto 0 0; }
 h1 span { color: var(--accent); }
 h2 { font: 700 14px/1 var(--display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0; }
-button, select, input { font: 600 14px var(--body); color: var(--ink); }
+h3 { font: 700 17px/1.1 var(--display); letter-spacing: .05em; text-transform: uppercase; margin: 0; }
+.tabs { max-width: 980px; margin: 0 auto; display: flex; gap: 2px; padding-bottom: 8px; overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button { border: 0; background: transparent; font: 700 15px var(--display); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; border-radius: 8px; flex: none; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+button, select, input, textarea { font: 600 14px var(--body); color: var(--ink); }
 button { border: 1.5px solid var(--line); background: var(--panel); border-radius: 9px; padding: 8px 13px; cursor: pointer; }
 button:hover { border-color: var(--ink); }
 button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--z-fast); outline-offset: 2px; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--z-fast); outline-offset: 2px; }
 .pill { font: 600 12px var(--mono); padding: 5px 10px; border-radius: 99px; border: 1px solid var(--line); background: var(--panel); white-space: nowrap; color: var(--muted); }
 .pill.on { border-color: var(--ok); color: var(--ok); }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
 .head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
 .head > * { min-width: 0; }
-
-/* set setup strip */
-.setup { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
-.chips { display: inline-flex; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; }
-.chips button { border: 0; background: transparent; padding: 7px 12px; border-radius: 8px; color: var(--muted); }
-.chips button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chips { display: inline-flex; flex-wrap: wrap; background: var(--soft); border-radius: 10px; padding: 3px; gap: 2px; }
+.chips button { border: 0; background: transparent; padding: 7px 11px; border-radius: 8px; color: var(--muted); }
+.chips button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .14); }
 .field { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); font-weight: 600; }
-.field input, .field select { background: var(--soft); border: 1px solid transparent; border-radius: 9px; padding: 7px 9px; }
-.field input { width: 84px; font-family: var(--mono); }
+.field input, .field select, .inp { background: var(--soft); border: 1px solid transparent; border-radius: 9px; padding: 7px 9px; min-width: 0; }
+.field input[type=number] { width: 84px; font-family: var(--mono); }
+.note { color: var(--muted); font-size: 12.5px; margin: 0; }
+.msg { border-left: 4px solid var(--z-mid); padding: 10px 14px; background: var(--panel); border-radius: 0 10px 10px 0; }
+.msg.err { border-left-color: var(--warn); }
+.msg.good { border-left-color: var(--ok); }
+.tag { font: 700 10.5px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--z-mid); }
+
+/* day plan, laid out like the coach's sheet */
+.dayhead { display: flex; gap: 12px; align-items: center; }
+.daynum { font: 800 44px/0.9 var(--display); color: var(--accent); min-width: 34px; }
+.ex { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 6px; }
+.ex.off h3 { color: var(--muted); }
+.exhead { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.tablewrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+th { text-align: right; font: 600 10.5px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 4px 7px; white-space: nowrap; }
+td { text-align: right; padding: 7px 7px; border-top: 1px solid var(--line); font: 500 13.5px var(--mono); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+td.vel { font-weight: 600; }
+td.vel { white-space: normal; min-width: 64px; }
+td.loadc { cursor: text; text-decoration: underline dotted; text-underline-offset: 3px; }
+td.vel small { display: block; font: 500 10.5px/1.3 var(--mono); color: var(--muted); max-width: 120px; margin-left: auto; }
+tr.plan { cursor: pointer; }
+tr.plan:hover td { background: var(--soft); }
+tr.next td { background: var(--hl); }
+tr.next td:first-child { box-shadow: inset 3px 0 0 var(--z-mid); }
+tr.rec td { background: color-mix(in srgb, var(--accent) 14%, var(--panel)); }
+tr.done td { color: var(--muted); }
+tr.done td.vel { color: var(--ink); }
+.check { font-size: 15px; color: var(--ok); }
+.acc { font-size: 13.5px; display: grid; gap: 2px; }
+.acc div { display: flex; justify-content: space-between; gap: 10px; border-top: 1px dashed var(--line); padding: 5px 0; }
+.acc span:last-child { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+
+/* home: pick a day */
+.weekgrp { display: grid; gap: 8px; }
+.weekgrp > .head h2 { color: var(--ink); }
+.days { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 10px; }
+.daycard { text-align: left; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: start; padding: 14px; border-radius: 14px; border: 1.5px solid var(--line); background: var(--panel); }
+.daycard:hover { border-color: var(--ink); }
+.daycard .daynum { grid-row: span 3; }
+.daycard b { font: 700 19px/1.1 var(--display); letter-spacing: .05em; text-transform: uppercase; }
+.daycard .exl { font: 400 12.5px/1.4 var(--body); color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.prog { height: 6px; border-radius: 3px; background: var(--soft); overflow: hidden; margin-top: 4px; }
+.prog i { display: block; height: 100%; background: var(--ok); }
+.daycard .st { font: 600 11.5px var(--mono); color: var(--muted); }
+.daycard.upnext { border-color: var(--z-mid); box-shadow: 0 0 0 2px color-mix(in srgb, var(--z-mid) 35%, transparent); }
+.daycard.done .daynum { color: var(--ok); }
+.back { border: 0; background: transparent; padding: 4px 0; color: var(--muted); font: 700 14px var(--display); letter-spacing: .1em; text-transform: uppercase; }
+.back:hover { color: var(--ink); }
+
+/* WHOOP tab */
+.wgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.rec { display: flex; gap: 18px; align-items: center; }
+.ring { --p: 0; --c: var(--muted); width: 112px; height: 112px; border-radius: 50%; flex: none; display: grid; place-items: center;
+  background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--soft) 0); }
+.ring div { width: 88px; height: 88px; border-radius: 50%; background: var(--panel); display: grid; place-items: center; text-align: center; }
+.ring b { font: 800 32px/1 var(--display); }
+.ring small { font: 600 10px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.mini { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; flex: 1; min-width: 0; }
+.big2 { font: 800 clamp(56px, 16vw, 96px)/.9 var(--display); font-variant-numeric: tabular-nums; }
+.r-good { --c: #16a34a; } .r-mid { --c: #e0a800; } .r-low { --c: #dc2626; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 600 12.5px var(--mono); padding: 4px 10px; border-radius: 99px; background: var(--soft); }
+.chip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c, var(--muted)); }
+.ready { color: var(--ok); }
 
 /* live */
 .live { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 16px; align-items: center; }
-.num { font: 800 clamp(70px, 19vw, 118px)/.88 var(--display); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.num { font: 800 clamp(64px, 18vw, 112px)/.88 var(--display); font-variant-numeric: tabular-nums; }
 .unit { font: 700 22px var(--display); color: var(--muted); margin-left: 6px; }
 .zone { font: 700 15px var(--display); letter-spacing: .12em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 8px; }
 .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; flex: none; }
 .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; }
 .stat { border-top: 2px solid var(--line); padding-top: 5px; min-width: 0; }
-.stat b { display: block; font: 700 27px/1.05 var(--display); font-variant-numeric: tabular-nums; }
+.stat b { display: block; font: 700 26px/1.05 var(--display); font-variant-numeric: tabular-nums; }
 .stat small { color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 600; }
 .stat.alert { border-top-color: var(--warn); } .stat.alert b { color: var(--warn); }
 .which { font-size: 12.5px; color: var(--muted); }
-
-/* charts */
 .charts { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 14px; }
 svg { display: block; width: 100%; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--muted); }
@@ -86,32 +148,49 @@ svg { display: block; width: 100%; }
 .toggles label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .toggles input { accent-color: var(--ink); width: 16px; height: 16px; }
 
-/* session */
+/* up-next bar */
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--panel); border-top: 1px solid var(--line); box-shadow: 0 -6px 20px rgb(0 0 0 / .08);
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+.dockin { max-width: 980px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding-top: 10px; }
+.dockinfo { flex: 1 1 220px; min-width: 0; }
+.dockinfo b { display: block; font: 700 18px/1.1 var(--display); letter-spacing: .04em; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dockinfo span { font-size: 13px; color: var(--muted); }
+.arm { background: var(--ink); color: var(--bg); border-color: var(--ink); padding: 11px 18px; font-size: 15px; }
+.arm[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.arm[aria-pressed="true"]::before { content: ""; display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #fff; margin-right: 8px; vertical-align: 1px; }
+@media (prefers-reduced-motion: no-preference) { .arm[aria-pressed="true"]::before { animation: blink 1.2s infinite; } @keyframes blink { 50% { opacity: .25; } } }
+
+/* program tab */
+.plist { display: grid; gap: 8px; }
+.pitem { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.pitem.on { border-color: var(--ink); }
+.maxes { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+textarea { width: 100%; min-height: 130px; background: var(--soft); border: 1px solid transparent; border-radius: 10px; padding: 10px; font: 500 12.5px/1.45 var(--mono); }
+.bday { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; }
+.brow { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) auto; gap: 6px; align-items: center; }
+.brow .inp { width: 100%; }
+.x { border: 0; background: transparent; color: var(--muted); padding: 4px 8px; font-size: 15px; }
+.x:hover { color: var(--warn); }
+
+/* history */
 details.set { border-top: 1px solid var(--line); }
 details.set > summary { list-style: none; cursor: pointer; padding: 11px 2px; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
 details.set > summary::-webkit-details-marker { display: none; }
 details.set > summary::before { content: "▸"; color: var(--muted); width: 12px; }
 details.set[open] > summary::before { content: "▾"; }
-.sname { font: 700 17px var(--display); letter-spacing: .05em; text-transform: uppercase; }
-.smeta { font: 500 13px var(--mono); color: var(--muted); }
-.tag { font: 700 10.5px var(--body); letter-spacing: .1em; text-transform: uppercase; color: var(--z-mid); }
-.tablewrap { overflow-x: auto; padding-bottom: 8px; }
-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-th { text-align: right; font: 600 10.5px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 5px 8px; white-space: nowrap; }
-td { text-align: right; padding: 7px 8px; border-top: 1px solid var(--line); font: 500 13.5px var(--mono); white-space: nowrap; }
-th:first-child, td:first-child { text-align: left; }
-tbody tr { cursor: pointer; }
-tbody tr:hover td { background: var(--soft); }
+.sname { font: 700 16px var(--display); letter-spacing: .05em; text-transform: uppercase; }
+.smeta { font: 500 12.5px var(--mono); color: var(--muted); }
+tbody tr.rep { cursor: pointer; }
+tbody tr.rep:hover td { background: var(--soft); }
 tbody tr.sel td { background: var(--soft); font-weight: 600; }
 .vlhi { color: var(--warn); }
-.note { color: var(--muted); font-size: 12.5px; margin: 0; }
-.msg { border-left: 4px solid var(--z-mid); padding: 10px 14px; background: var(--panel); border-radius: 0 10px 10px 0; }
-.msg.err { border-left-color: var(--warn); }
-.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.del { border: 0; background: transparent; color: var(--muted); padding: 2px 6px; font-size: 15px; line-height: 1; }
+.del:hover { color: var(--warn); }
 details.debug summary { cursor: pointer; font-size: 12.5px; color: var(--muted); }
 pre { max-height: 150px; overflow: auto; font: 11.5px/1.5 var(--mono); color: var(--muted); margin: 8px 0 0; white-space: pre-wrap; word-break: break-all; }
-.empty { color: var(--muted); font-size: 13.5px; }
-@media (max-width: 720px) { .live, .charts { grid-template-columns: 1fr; } }
+.empty { color: var(--muted); font-size: 13.5px; margin: 0; }
+@media (max-width: 560px) { .dockinfo { flex-basis: 100%; } td, th { padding-left: 5px; padding-right: 5px; } }
+@media (max-width: 720px) { .live, .charts { grid-template-columns: 1fr; } .brow { grid-template-columns: minmax(0, 1fr) auto; } .brow .presc { grid-column: 1 / 2; } }
 @media (prefers-reduced-motion: no-preference) { .flash { animation: flash .7s ease-out; } @keyframes flash { from { background: color-mix(in srgb, var(--z-mid) 26%, var(--panel)); } } }
 </style>
 </head>
@@ -121,283 +200,959 @@ pre { max-height: 150px; overflow: auto; font: 11.5px/1.5 var(--mono); color: va
     <h1>VBT <span>Puck</span></h1>
     <span id="conn" class="pill">Not connected</span>
     <span id="bat" class="pill">Battery –</span>
+    <span id="hrPill" class="pill" hidden>♥ –</span>
     <button id="btnConnect" class="primary">Connect puck</button>
   </div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="train" aria-selected="true">Train</button>
+    <button role="tab" data-tab="program" aria-selected="false">Program</button>
+    <button role="tab" data-tab="history" aria-selected="false">History</button>
+    <button role="tab" data-tab="whoop" aria-selected="false">WHOOP</button>
+  </nav>
 </header>
 
 <main class="wrap gut">
   <div id="msg" class="msg" hidden></div>
 
-  <section class="panel" aria-label="Next set">
-    <div class="setup">
-      <div class="chips" role="group" aria-label="Lift" id="liftChips">
-        <button data-lift="Squat" aria-pressed="true">Squat</button>
-        <button data-lift="Bench" aria-pressed="false">Bench</button>
-        <button data-lift="Deadlift" aria-pressed="false">Deadlift</button>
-      </div>
-      <label class="field" for="load">Load <input id="load" type="number" inputmode="decimal" min="0" step="2.5" value="140"> kg</label>
-      <label class="field" for="vlCut">Stop at <select id="vlCut"><option value="10">−10 %</option><option value="20" selected>−20 %</option><option value="30">−30 %</option><option value="40">−40 %</option></select></label>
-      <button id="btnNewSet">New set</button>
-    </div>
-  </section>
-
-  <section class="panel" id="liveBox" aria-live="polite">
-    <div class="head"><h2 id="liveTitle">Last rep</h2><span id="liveWhich" class="which"></span></div>
-    <div class="live">
-      <div>
-        <div><span class="num" id="mv">–</span><span class="unit">m/s</span></div>
-        <div class="zone" id="zone"><span class="dot" style="background:var(--line)"></span>Mean velocity</div>
-      </div>
-      <div class="stats">
-        <div class="stat"><small>Peak velocity</small><b id="pv">–</b></div>
-        <div class="stat"><small>Range of motion</small><b id="rom">–</b></div>
-        <div class="stat" id="vlBox"><small>Velocity loss</small><b id="vl">–</b></div>
-        <div class="stat"><small>Bar drift (front/back)</small><b id="dx">–</b></div>
-      </div>
-    </div>
-  </section>
-
-  <div class="charts">
-    <section class="panel">
-      <div class="head"><h2 id="setTitle">Current set</h2><span id="demoTag" class="tag" hidden>Example data</span></div>
-      <svg id="chart" height="230" role="img" aria-label="Mean velocity of each rep in the current set"></svg>
-      <div class="legend">
-        <span><i class="dot" style="background:var(--z-fast)"></i>&gt;0.75 speed</span>
-        <span><i class="dot" style="background:var(--z-mid)"></i>0.50–0.75</span>
-        <span><i class="dot" style="background:var(--z-slow)"></i>0.30–0.50</span>
-        <span><i class="dot" style="background:var(--accent)"></i>&lt;0.30 near max</span>
-      </div>
-      <p class="note" id="cutLegend">Dashed line: stop the set here.</p>
+  <!-- ================= TRAIN ================= -->
+  <div id="tab-train" class="wrap" style="padding:0">
+    <section class="panel" id="homeView">
+      <div class="head"><div><h2>Pick today's session</h2><span class="which" id="progName"></span></div><button id="btnFree">Free lift</button></div>
+      <div id="homeRec" hidden></div>
+      <div id="weeks" style="display:grid;gap:18px"></div>
     </section>
+
+    <div id="dayWrap" class="wrap" style="padding:0">
     <section class="panel">
-      <div class="head"><h2>Bar path</h2><span class="which" id="pathWhich"></span></div>
-      <svg id="path" height="300" role="img" aria-label="Side view of the bar path for the selected rep"></svg>
-      <div class="toggles">
-        <label for="flip"><input type="checkbox" id="flip"> Flip front/back</label>
-        <label for="closeLoop"><input type="checkbox" id="closeLoop" checked> Lockout over start point</label>
+      <div class="head">
+        <button class="back" id="btnBack">← All days</button>
+        <div class="chips" id="dayChips" role="group" aria-label="Day"></div>
       </div>
-      <p class="note">Side view, grid = 5 cm. Faint lines are the other reps in the set. Front/back is the least certain part of the measurement, so judge the shape and the drift more than single millimetres.</p>
+      <div id="dayView"></div>
+    </section>
+
+    <section class="panel" id="liveBox" aria-live="polite">
+      <div class="head"><h2 id="liveTitle">Last rep</h2><span id="liveWhich" class="which"></span></div>
+      <div class="live">
+        <div>
+          <div><span class="num" id="mv">–</span><span class="unit">m/s</span></div>
+          <div class="zone" id="zone"><span class="dot" style="background:var(--line)"></span>Mean velocity</div>
+        </div>
+        <div class="stats">
+          <div class="stat"><small>Peak velocity</small><b id="pv">–</b></div>
+          <div class="stat"><small>Range of motion</small><b id="rom">–</b></div>
+          <div class="stat" id="vlBox"><small>Velocity loss</small><b id="vl">–</b></div>
+          <div class="stat"><small>Bar drift (front/back)</small><b id="dx">–</b></div>
+        </div>
+      </div>
+    </section>
+
+    <div class="charts">
+      <section class="panel">
+        <div class="head"><h2 id="setTitle">Current set</h2><span id="demoTag" class="tag" hidden>Example data</span></div>
+        <svg id="chart" height="220" role="img" aria-label="Mean velocity of each rep in the current set"></svg>
+        <div class="legend">
+          <span><i class="dot" style="background:var(--z-fast)"></i>&gt;0.75</span>
+          <span><i class="dot" style="background:var(--z-mid)"></i>0.50–0.75</span>
+          <span><i class="dot" style="background:var(--z-slow)"></i>0.30–0.50</span>
+          <span><i class="dot" style="background:var(--accent)"></i>&lt;0.30</span>
+          <label class="field" for="vlCut" style="margin-left:auto">Stop at <select id="vlCut"><option value="10">−10 %</option><option value="20" selected>−20 %</option><option value="30">−30 %</option><option value="40">−40 %</option></select></label>
+        </div>
+        <p class="note" id="cutLegend"></p>
+      </section>
+      <section class="panel">
+        <div class="head"><h2>Bar path</h2><span class="which" id="pathWhich"></span></div>
+        <svg id="path" height="300" role="img" aria-label="Side view of the bar path for the selected rep"></svg>
+        <div class="toggles">
+          <label for="flip"><input type="checkbox" id="flip"> Flip front/back</label>
+          <label for="closeLoop"><input type="checkbox" id="closeLoop" checked> Lockout over start point</label>
+          <label for="pathZoom"><input type="checkbox" id="pathZoom"> Close-up</label>
+        </div>
+        <p class="note">Side view, grid 10 cm (5 cm in close-up). The figure replays the rep. If the bar drifts the wrong way, tick Flip front/back.</p>
+      </section>
+    </div>
+    </div>
+  </div>
+
+  <!-- ================= PROGRAM ================= -->
+  <div id="tab-program" class="wrap" style="padding:0" hidden>
+    <section class="panel">
+      <div class="head"><h2>Programs</h2><button id="btnNewProg">New program</button></div>
+      <div class="plist" id="plist"></div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Rep max tracker · 1RM</h2><span class="which">Used for % loads</span></div>
+      <div class="maxes">
+        <label class="field" for="maxS">Squat <input id="maxS" type="number" step="2.5" inputmode="decimal"> kg</label>
+        <label class="field" for="maxB">Bench <input id="maxB" type="number" step="2.5" inputmode="decimal"> kg</label>
+        <label class="field" for="maxD">Deadlift <input id="maxD" type="number" step="2.5" inputmode="decimal"> kg</label>
+      </div>
+    </section>
+
+    <section class="panel" id="syncBox">
+      <div class="head"><h2>Live link to Google Sheets</h2><span class="which" id="syncStatus">Not linked</span></div>
+      <p class="note">Paste the web app link and key from the sync script in your sheet. The app then loads your program from the sheet every time you open it, and writes each finished set's velocity and load back into its row.</p>
+      <label class="field" for="syncUrl" style="display:grid;gap:4px">Web app link <input id="syncUrl" class="inp" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+      <label class="field" for="syncKey" style="display:grid;gap:4px">Key <input id="syncKey" class="inp" placeholder="vbt-…" autocomplete="off"></label>
+      <div class="toggles"><label for="syncWrite"><input type="checkbox" id="syncWrite" checked> Write velocity and load into the sheet</label></div>
+      <div class="row"><button id="btnLink" class="primary">Link and load program</button><button id="btnRefresh">Refresh now</button><button id="btnUnlink">Unlink</button></div>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Import a week by pasting</h2></div>
+      <p class="note">In your coach's sheet, open the week's tab, select everything (Ctrl/⌘ + A), copy, and paste below. A simple table with columns <b>Day, Exercise, Sets, Reps, Load, %, RPE</b> works too, as does a CSV file.</p>
+      <textarea id="importText" placeholder="Paste the week here…"></textarea>
+      <div class="row">
+        <label class="field" for="importName">Week name <input id="importName" class="inp" style="width:130px" placeholder="Week 7"></label>
+        <button id="btnImport" class="primary">Add week to program</button>
+        <label class="field" for="importFile" style="cursor:pointer"><span style="text-decoration:underline">or choose a CSV file</span><input id="importFile" type="file" accept=".csv,.tsv,.txt" hidden></label>
+      </div>
+    </section>
+
+    <section class="panel" id="builder">
+      <div class="head"><h2 id="bTitle">Edit week</h2>
+        <div class="row"><label class="field" for="bWeek">Week <select id="bWeek"></select></label><button id="bAddWeek">Add week</button><button id="bCopyWeek">Copy week</button></div>
+      </div>
+      <p class="note">One line per exercise. Prescription: <b>3x5 @ 160</b>, <b>1x3 @ 80%</b>, <b>4x4 rpe 6</b>, or several joined with commas: <b>1x1 @ 170, 3x3 @ 155 rpe 6</b>. % uses the 1RMs above.</p>
+      <label class="field" for="bWeekName">Week name <input id="bWeekName" class="inp" style="width:160px"></label>
+      <div id="bDays" style="display:grid;gap:10px"></div>
+      <div class="row"><button id="bAddDay">Add day</button><button id="bSave" class="primary">Save week</button><button id="bDelWeek">Delete week</button></div>
     </section>
   </div>
 
-  <section class="panel">
-    <div class="head">
-      <h2>Session</h2>
+  <!-- ================= WHOOP ================= -->
+  <div id="tab-whoop" class="wrap" style="padding:0" hidden>
+    <div class="wgrid">
+      <section class="panel">
+        <div class="head"><h2>Today's recovery</h2><button id="wRefresh">Refresh</button></div>
+        <div id="wToday"><p class="empty">Link your WHOOP account below to see recovery, HRV, sleep and strain here.</p></div>
+        <span class="which" id="wStatus"></span>
+      </section>
+      <section class="panel">
+        <div class="head"><h2>Live heart rate</h2><button id="btnHr" class="primary">Connect WHOOP</button></div>
+        <div class="row" style="align-items:baseline;gap:10px"><span class="big2" id="hrNow">–</span><span class="unit">bpm</span><span class="which" id="hrZone"></span></div>
+        <svg id="hrChart" height="90" role="img" aria-label="Heart rate over the last 10 minutes"></svg>
+        <p class="note">Turn on <b>Broadcast Heart Rate</b> in the WHOOP app (strap settings) first. Each set logs your peak heart rate.</p>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="head"><h2>Rest timer</h2><div class="row"><button id="restGo">Start rest</button><button id="restStop">Stop</button></div></div>
+      <div class="row" style="align-items:baseline;gap:14px"><span class="big2" id="restClock">0:00</span><span id="restState" class="which">Starts by itself when a set ends.</span></div>
       <div class="row">
-        <button id="btnDemo">Simulate a set</button>
-        <button id="btnCsv">Export CSV</button>
-        <button id="btnClear">Clear</button>
+        <label class="field" for="restHr">Ready under <input id="restHr" type="number" inputmode="numeric" value="110"> bpm</label>
+        <label class="field" for="restMin">and at least <input id="restMin" type="number" inputmode="numeric" value="180" step="15"> s</label>
+        <label class="field" for="restBeep" style="cursor:pointer"><input id="restBeep" type="checkbox" checked style="width:auto"> Beep when ready</label>
       </div>
-    </div>
-    <div id="clearConfirm" class="row msg err" hidden>
-      <span>Delete every set in this session?</span><button id="clearYes">Delete</button><button id="clearNo">Keep</button>
-    </div>
-    <div id="sets"></div>
-    <p class="empty" id="noSets">No sets yet. Connect the puck and lift, or simulate a set.</p>
-    <details class="debug"><summary>Raw lines from the puck</summary><pre id="raw"></pre></details>
-  </section>
+      <p class="note">Without live heart rate, it's ready after the minimum time.</p>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Last two weeks</h2></div>
+      <div class="tablewrap"><table><thead><tr><th>Day</th><th>Recovery</th><th>HRV ms</th><th>Rest HR</th><th>Sleep</th><th>Strain</th><th>Bar speed</th></tr></thead><tbody id="wRows"></tbody></table></div>
+      <p class="note">Bar speed is the average of every rep you logged that day, so compare days with similar loads.</p>
+    </section>
+
+    <section class="panel">
+      <div class="head"><h2>Link WHOOP account</h2><span class="which" id="wLinked">Not linked</span></div>
+      <p class="note">Uses the WHOOP bridge script (one-time setup, see the guide). Paste its web app link and key, then sign in.</p>
+      <label class="field" for="wUrl" style="display:grid;gap:4px">Bridge link <input id="wUrl" class="inp" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+      <label class="field" for="wKey" style="display:grid;gap:4px">Key <input id="wKey" class="inp" placeholder="whoop-…" autocomplete="off"></label>
+      <div class="row"><button id="wSave" class="primary">Save and sign in to WHOOP</button><a id="wLogin" class="note" href="#" target="_blank" rel="noopener" hidden>Open WHOOP sign-in</a><button id="wUnlink">Unlink</button></div>
+    </section>
+  </div>
+
+  <!-- ================= HISTORY ================= -->
+  <div id="tab-history" class="wrap" style="padding:0" hidden>
+    <section class="panel" id="pastBox">
+      <div class="head"><h2>Past weeks</h2><span class="which">Tap a day to open it</span></div>
+      <div id="pastWeeks" style="display:grid;gap:6px"></div>
+    </section>
+    <section class="panel">
+      <div class="head">
+        <h2>History</h2>
+        <div class="row"><button id="btnDemo">Simulate a set</button><button id="btnCsv">Export CSV</button><button id="btnClear">Clear</button></div>
+      </div>
+      <div id="clearConfirm" class="row msg err" hidden>
+        <span>Delete every logged set? Your programs stay.</span><button id="clearYes">Delete</button><button id="clearNo">Keep</button>
+      </div>
+      <div id="sets"></div>
+      <p class="empty" id="noSets">No sets logged yet.</p>
+      <details class="debug"><summary>Raw lines from the puck</summary><pre id="raw"></pre></details>
+    </section>
+  </div>
 </main>
+
+<div class="dock gut" id="dock">
+  <div class="dockin">
+    <div class="dockinfo"><span id="dockLabel">Up next</span><b id="dockWhat">–</b></div>
+    <label class="field" for="dockLoad">Load <input id="dockLoad" type="number" step="2.5" inputmode="decimal" placeholder="kg"></label>
+    <button id="btnSim" title="Simulate this set without the puck">Simulate</button>
+    <button id="btnArm" class="arm" aria-pressed="false">Start set</button>
+  </div>
+</div>
 
 <script>
 const SVC = "6e7c0001-5a1d-4c2b-9f3e-1b2a3c4d5e6f";
 const REP = "6e7c0002-5a1d-4c2b-9f3e-1b2a3c4d5e6f";
 const BAT = "6e7c0003-5a1d-4c2b-9f3e-1b2a3c4d5e6f";
+const DEFAULT_PROGRAM = {"id":"nico-aj","name":"Nico's program \u00b7 Adam Jansson","maxes":{"Squat":255,"Bench":220,"Deadlift":290},"weeks":[{"name":"Week 1","days":[{"title":"Squat & Bench","notes":"","exercises":[{"name":"Pause Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":4,"load":160.0,"pct":63.0,"rpe":"5.0"},{"label":"Set 2","reps":4,"load":160.0,"pct":63.0,"rpe":"5.0"},{"label":"Set 3","reps":4,"load":160.0,"pct":63.0,"rpe":"5.0"}]},{"name":"Leg Press","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":10,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 2","reps":10,"load":null,"pct":null,"rpe":"7.0"}]},{"name":"Cossack Squat - Dumbbell Front Hold","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":8,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 2","reps":8,"load":null,"pct":null,"rpe":"7.0"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":1,"load":160.0,"pct":73.0,"rpe":"6.0"},{"label":"Set 2","reps":3,"load":150.0,"pct":68.0,"rpe":"6.0"},{"label":"Set 3","reps":3,"load":150.0,"pct":68.0,"rpe":"6.0"},{"label":"Set 4","reps":5,"load":142.5,"pct":65.0,"rpe":"6.0"},{"label":"Set 3","reps":5,"load":142.5,"pct":65.0,"rpe":"6.0"}]}],"accessories":[{"name":"Cable Pec Fly","sets":"2-3","reps":"8-12","rpe":"7-7.5"},{"name":"Cable Tricep Pushdown","sets":"2-3","reps":"8-12","rpe":"7-7.5"}]},{"title":"Bench & Deadlift","notes":"","exercises":[{"name":"Pause Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":190.0,"pct":66.0,"rpe":"5.5"},{"label":"Set 2","reps":2,"load":190.0,"pct":66.0,"rpe":"5.5"},{"label":"Set 3","reps":2,"load":190.0,"pct":66.0,"rpe":"5.5"}]},{"name":"Stiff Leg Rdl - Form Over Load","lift":"Other","track":true,"unit":"kg","sets":[{"label":"Top Set","reps":8,"load":110.0,"pct":38.0,"rpe":"5.5"},{"label":"Set 1","reps":8,"load":110.0,"pct":38.0,"rpe":"5.5"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":4,"load":150.0,"pct":68.0,"rpe":"6.0"},{"label":"Set 2","reps":4,"load":150.0,"pct":68.0,"rpe":"6.0"},{"label":"Set 3","reps":4,"load":150.0,"pct":68.0,"rpe":"6.0"},{"label":"Set 4","reps":4,"load":150.0,"pct":68.0,"rpe":"6.0"}]},{"name":"Machine Chest Press","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":12,"load":null,"pct":null,"rpe":"7.5"},{"label":"Set 2","reps":12,"load":null,"pct":null,"rpe":"7.5"}]}],"accessories":[{"name":"Cable Hip Flexor Knee Raises","sets":"2-3","reps":"8-12","rpe":"7-7.5"},{"name":"Lat Pull Over","sets":"2-3","reps":"8-12","rpe":"7-7.5"},{"name":"Chest Supported Upper Back Row","sets":"2-3","reps":"8-12","rpe":"7-7.5"}]},{"title":"Squat & Bench","notes":"","exercises":[{"name":"Comp Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":170.0,"pct":67.0,"rpe":"5.5"},{"label":"Set 2","reps":2,"load":170.0,"pct":67.0,"rpe":"5.5"},{"label":"Set 3","reps":2,"load":170.0,"pct":67.0,"rpe":"5.5"},{"label":"Set 4","reps":2,"load":170.0,"pct":67.0,"rpe":"5.5"}]},{"name":"2 Count Pause Bench - Tech Priority","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":155.0,"pct":70.0,"rpe":"6.0"},{"label":"Set 2","reps":2,"load":155.0,"pct":70.0,"rpe":"6.0"},{"label":"Set 3","reps":2,"load":155.0,"pct":70.0,"rpe":"6.0"},{"label":"Set 4","reps":2,"load":155.0,"pct":70.0,"rpe":"6.0"},{"label":"Set 5","reps":2,"load":155.0,"pct":70.0,"rpe":"6.0"}]},{"name":"Comp Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":165.0,"pct":57.0,"rpe":"6.0"},{"label":"Set 2","reps":5,"load":165.0,"pct":57.0,"rpe":"6.0"}]}],"accessories":[{"name":"GHD Situps","sets":"2-3","reps":"8-12","rpe":"7-7.5"}]}]},{"name":"Week 2","days":[{"title":"Squat & Bench","notes":"","exercises":[{"name":"Pause Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":4,"load":142.5,"pct":56.0,"rpe":"6.0"},{"label":"Set 2","reps":4,"load":142.5,"pct":56.0,"rpe":"6.0"},{"label":"Set 3","reps":4,"load":142.5,"pct":56.0,"rpe":"6.0"}]},{"name":"Leg Press","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":10,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 2","reps":10,"load":null,"pct":null,"rpe":"8.0"}]},{"name":"Cossack Squat - Dumbbell Front Hold","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":8,"load":null,"pct":null,"rpe":"7.5"},{"label":"Set 2","reps":8,"load":null,"pct":null,"rpe":"7.5"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":1,"load":167.5,"pct":76.0,"rpe":"7.0"},{"label":"Set 2","reps":3,"load":157.5,"pct":72.0,"rpe":"6.5"},{"label":"Set 3","reps":3,"load":157.5,"pct":72.0,"rpe":"6.5"},{"label":"Set 4","reps":5,"load":150.0,"pct":68.0,"rpe":"6.5"},{"label":"Set 3","reps":5,"load":150.0,"pct":68.0,"rpe":"6.5"}]}],"accessories":[{"name":"Cable Pec Fly","sets":"2-3","reps":"8-12","rpe":"8.5"},{"name":"Cable Tricep Pushdown","sets":"2-3","reps":"8-12","rpe":"8.5"}]},{"title":"Bench & Deadlift","notes":"","exercises":[{"name":"Pause Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":null,"pct":null,"rpe":"6.5"},{"label":"Set 2","reps":2,"load":null,"pct":null,"rpe":"6.5"},{"label":"Set 3","reps":2,"load":null,"pct":null,"rpe":"6.5"}]},{"name":"Stiff Leg Rdl - Form Over Load","lift":"Other","track":true,"unit":"kg","sets":[{"label":"Top Set","reps":8,"load":null,"pct":null,"rpe":"6.5"},{"label":"Set 1","reps":8,"load":null,"pct":null,"rpe":"6.5"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":4,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 2","reps":4,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 3","reps":4,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 4","reps":4,"load":null,"pct":null,"rpe":"7.0"}]},{"name":"Incline Db Press","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":12,"load":null,"pct":null,"rpe":"7.5"},{"label":"Set 2","reps":12,"load":null,"pct":null,"rpe":"7.5"}]}],"accessories":[{"name":"Cable Hip Flexor Knee Raises","sets":"2-3","reps":"8-12","rpe":"8.5"},{"name":"Lat Pull Over","sets":"2-3","reps":"8-12","rpe":"8.5"},{"name":"Upper Back Row","sets":"2-3","reps":"8-12","rpe":"8.5"}]},{"title":"Squat & Bench","notes":"","exercises":[{"name":"Comp Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":170.0,"pct":67.0,"rpe":"6.5"},{"label":"Set 2","reps":2,"load":170.0,"pct":67.0,"rpe":"6.5"},{"label":"Set 3","reps":2,"load":170.0,"pct":67.0,"rpe":"6.5"},{"label":"Set 4","reps":2,"load":170.0,"pct":67.0,"rpe":"6.5"}]},{"name":"2 Count Pause Bench - Tech Priority","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":160.0,"pct":73.0,"rpe":"7.0"},{"label":"Set 2","reps":2,"load":160.0,"pct":73.0,"rpe":"7.0"},{"label":"Set 3","reps":2,"load":160.0,"pct":73.0,"rpe":"7.0"},{"label":"Set 4","reps":2,"load":160.0,"pct":73.0,"rpe":"7.0"},{"label":"Set 5","reps":2,"load":160.0,"pct":73.0,"rpe":"7.0"}]},{"name":"Comp Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":null,"pct":null,"rpe":"6.5"},{"label":"Set 2","reps":5,"load":null,"pct":null,"rpe":"6.5"}]}],"accessories":[{"name":"Leg Raises","sets":"2-3","reps":"8-12","rpe":"8.5"}]}]},{"name":"Week 3","days":[{"title":"Squat & Bench","notes":"","exercises":[{"name":"Pause Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":4,"load":175.0,"pct":69.0,"rpe":"6.5-7"},{"label":"Set 2","reps":4,"load":175.0,"pct":69.0,"rpe":"6.5-7"},{"label":"Set 3","reps":4,"load":175.0,"pct":69.0,"rpe":"6.5-7"}]},{"name":"Leg Press","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":10,"load":null,"pct":null,"rpe":"8.5"},{"label":"Set 2","reps":10,"load":null,"pct":null,"rpe":"8.5"}]},{"name":"Cossack Squat - Dumbbell Front Hold","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":8,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 2","reps":8,"load":null,"pct":null,"rpe":"8.0"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":1,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 2","reps":3,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 3","reps":3,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 4","reps":5,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 3","reps":5,"load":null,"pct":null,"rpe":"7.0"}]}],"accessories":[{"name":"Cable Pec Fly","sets":"2-3","reps":"8-12","rpe":"9.0"},{"name":"Cable Tricep Pushdown","sets":"2-3","reps":"8-12","rpe":"9.0"}]},{"title":"Bench & Deadlift","notes":"","exercises":[{"name":"Pause Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 2","reps":2,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 3","reps":2,"load":null,"pct":null,"rpe":"7.0"}]},{"name":"Stiff Leg Rdl - Form Over Load","lift":"Other","track":true,"unit":"kg","sets":[{"label":"Top Set","reps":8,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 1","reps":8,"load":null,"pct":null,"rpe":"7.0"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":4,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 2","reps":4,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 3","reps":4,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 4","reps":4,"load":null,"pct":null,"rpe":"8.0"}]},{"name":"Incline Db Press","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":12,"load":null,"pct":null,"rpe":"8.5"},{"label":"Set 2","reps":12,"load":null,"pct":null,"rpe":"8.5"}]}],"accessories":[{"name":"Cable Hip Flexor Knee Raises","sets":"2-3","reps":"8-12","rpe":"9.0"},{"name":"Lat Pull Over","sets":"2-3","reps":"8-12","rpe":"9.0"},{"name":"Upper Back Row","sets":"2-3","reps":"8-12","rpe":"9.0"}]},{"title":"Squat & Bench","notes":"","exercises":[{"name":"Comp Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 2","reps":2,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 3","reps":2,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 4","reps":2,"load":null,"pct":null,"rpe":"7.0"}]},{"name":"2 Count Pause Bench - Tech Priority","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 2","reps":2,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 3","reps":2,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 4","reps":2,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 5","reps":2,"load":null,"pct":null,"rpe":"8.0"}]},{"name":"Comp Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":null,"pct":null,"rpe":"7.0"},{"label":"Set 2","reps":5,"load":null,"pct":null,"rpe":"7.0"}]}],"accessories":[{"name":"Leg Raises","sets":"2-3","reps":"8-12","rpe":"9.0"}]}]},{"name":"Week 4","days":[{"title":"Squat & Bench","notes":"","exercises":[{"name":"Comp Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":160.0,"pct":63.0,"rpe":"5.0"},{"label":"Set 2","reps":5,"load":160.0,"pct":63.0,"rpe":"5.0"},{"label":"Set 3","reps":5,"load":160.0,"pct":63.0,"rpe":"5.0"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Top Set","reps":3,"load":160.0,"pct":73.0,"rpe":"6-6.5"},{"label":"Set 1","reps":4,"load":150.0,"pct":68.0,"rpe":"6.0"},{"label":"Set 2","reps":4,"load":150.0,"pct":68.0,"rpe":"6.0"},{"label":"Set 3","reps":4,"load":150.0,"pct":68.0,"rpe":"6.0"},{"label":"Set 4","reps":4,"load":150.0,"pct":68.0,"rpe":"6.0"}]}],"accessories":[{"name":"FFE Split Squat - Full Rom","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Quad Extensions","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Cable Tricep Pushdown","sets":"2","reps":"8-12","rpe":"9.0"}]},{"title":"Deadlift & Bench","notes":"","exercises":[{"name":"Sumo Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":3,"load":170.0,"pct":59.0,"rpe":"4.0"},{"label":"Set 2","reps":3,"load":180.0,"pct":62.0,"rpe":"5.0"},{"label":"Set 3","reps":3,"load":190.0,"pct":66.0,"rpe":"6.0"}]},{"name":"Close Grip Larsen Press","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":6,"load":120.0,"pct":55.0,"rpe":"6.5"},{"label":"Set 2","reps":6,"load":120.0,"pct":55.0,"rpe":"6.5"},{"label":"Set 3","reps":6,"load":120.0,"pct":55.0,"rpe":"6.5"}]},{"name":"CABLE PEC FLY - slight tempo to these","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":10,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 2","reps":10,"load":null,"pct":null,"rpe":"8.0"}]}],"accessories":[{"name":"Single Leg Lying Ham Curl","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Upper Back Cable Row","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Dumbbell Bicep Curl","sets":"2","reps":"8-12","rpe":"9.0"}]},{"title":"Bench","notes":"","exercises":[{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":1,"load":170.0,"pct":77.0,"rpe":"6.0"},{"label":"Set 2","reps":1,"load":170.0,"pct":77.0,"rpe":"6.0"},{"label":"Set 3","reps":1,"load":170.0,"pct":77.0,"rpe":"6.0"},{"label":"Set 4","reps":1,"load":170.0,"pct":77.0,"rpe":"6.0"},{"label":"Set 5","reps":1,"load":170.0,"pct":77.0,"rpe":"6.0"}]},{"name":"Incline Db Press","lift":"Other","track":false,"unit":"kg","sets":[{"label":"Set 1","reps":10,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 2","reps":10,"load":null,"pct":null,"rpe":"8.0"},{"label":"Set 3","reps":10,"load":null,"pct":null,"rpe":"8.0"}]}],"accessories":[{"name":"Cable Lateral Raise","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Cable Tricep Pushdown","sets":"2","reps":"8-12","rpe":"9.0"}]},{"title":"Sbd","notes":"","exercises":[{"name":"Comp Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":170.0,"pct":67.0,"rpe":"5.0"},{"label":"Set 2","reps":2,"load":170.0,"pct":67.0,"rpe":"5.0"},{"label":"Set 3","reps":2,"load":170.0,"pct":67.0,"rpe":"5.0"}]},{"name":"Ssb Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":150.0,"pct":59.0,"rpe":"6.0"},{"label":"Set 2","reps":5,"load":150.0,"pct":59.0,"rpe":"6.0"}]},{"name":"Sumo Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":6,"load":160.0,"pct":55.0,"rpe":"5.0"},{"label":"Set 2","reps":6,"load":170.0,"pct":59.0,"rpe":"6.0"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":150.0,"pct":68.0,"rpe":"6.0"},{"label":"Set 2","reps":5,"load":150.0,"pct":68.0,"rpe":"6.0"}]}],"accessories":[]}]},{"name":"Week 5","days":[{"title":"Squat & Bench","notes":"","exercises":[{"name":"Comp Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":170.0,"pct":67.0,"rpe":"6.0"},{"label":"Set 2","reps":5,"load":170.0,"pct":67.0,"rpe":"6.0"},{"label":"Set 3","reps":5,"load":170.0,"pct":67.0,"rpe":"6.0"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Top Set","reps":3,"load":170.0,"pct":77.0,"rpe":"7.5"},{"label":"Set 1","reps":4,"load":155.0,"pct":70.0,"rpe":"6.5-7"},{"label":"Set 2","reps":4,"load":155.0,"pct":70.0,"rpe":"6.5-7"},{"label":"Set 3","reps":4,"load":155.0,"pct":70.0,"rpe":"6.5-7"},{"label":"Set 4","reps":4,"load":155.0,"pct":70.0,"rpe":"6.5-7"}]}],"accessories":[{"name":"FFE Split Squat - Full Rom","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Quad Extensions","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Cable Tricep Pushdown","sets":"2","reps":"8-12","rpe":"9.0"}]},{"title":"Deadlift & Bench","notes":"","exercises":[{"name":"Sumo Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":3,"load":175.0,"pct":60.0,"rpe":"4.5"},{"label":"Set 2","reps":3,"load":185.0,"pct":64.0,"rpe":"5.5"},{"label":"Set 3","reps":3,"load":195.0,"pct":67.0,"rpe":"6.5"}]},{"name":"Close Grip Larsen Press","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":6,"load":130.0,"pct":59.0,"rpe":"7.0"},{"label":"Set 2","reps":6,"load":130.0,"pct":59.0,"rpe":"7.0"},{"label":"Set 3","reps":6,"load":130.0,"pct":59.0,"rpe":"7.0"}]},{"name":"CABLE PEC FLY - slight tempo to these","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":10,"load":null,"pct":null,"rpe":"8.5"},{"label":"Set 2","reps":10,"load":null,"pct":null,"rpe":"8.5"}]}],"accessories":[{"name":"Single Leg Lying Ham Curl","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Upper Back Cable Row","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Dumbbell Bicep Curl","sets":"2","reps":"8-12","rpe":"9.0"}]},{"title":"Bench","notes":"","exercises":[{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":1,"load":180.0,"pct":82.0,"rpe":"7.0"},{"label":"Set 2","reps":1,"load":180.0,"pct":82.0,"rpe":"7.0"},{"label":"Set 3","reps":1,"load":180.0,"pct":82.0,"rpe":"7.0"},{"label":"Set 4","reps":1,"load":180.0,"pct":82.0,"rpe":"7.0"},{"label":"Set 5","reps":1,"load":180.0,"pct":82.0,"rpe":"7.0"}]},{"name":"Incline Db Press","lift":"Other","track":false,"unit":"kg","sets":[{"label":"Set 1","reps":10,"load":null,"pct":null,"rpe":"8.5"},{"label":"Set 2","reps":10,"load":null,"pct":null,"rpe":"8.5"},{"label":"Set 3","reps":10,"load":null,"pct":null,"rpe":"8.5"}]}],"accessories":[{"name":"Cable Lateral Raise","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Cable Tricep Pushdown","sets":"2","reps":"8-12","rpe":"9.0"}]},{"title":"Sbd","notes":"","exercises":[{"name":"Comp Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":185.0,"pct":73.0,"rpe":"6.0"},{"label":"Set 2","reps":2,"load":185.0,"pct":73.0,"rpe":"6.0"},{"label":"Set 3","reps":2,"load":185.0,"pct":73.0,"rpe":"6.0"}]},{"name":"Ssb Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":155.0,"pct":61.0,"rpe":"7.0"},{"label":"Set 2","reps":5,"load":155.0,"pct":61.0,"rpe":"7.0"}]},{"name":"Sumo Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":6,"load":180.0,"pct":62.0,"rpe":"5.5"},{"label":"Set 2","reps":6,"load":185.0,"pct":64.0,"rpe":"6.5"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":null,"pct":null,"rpe":"6.5-7"},{"label":"Set 2","reps":5,"load":null,"pct":null,"rpe":"6.5-7"}]}],"accessories":[]}]},{"name":"Week 6","days":[{"title":"Squat & Bench","notes":"","exercises":[{"name":"Comp Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":177.5,"pct":70.0,"rpe":"7 (177.5)"},{"label":"Set 2","reps":5,"load":177.5,"pct":70.0,"rpe":"7 (177.5)"},{"label":"Set 3","reps":5,"load":177.5,"pct":70.0,"rpe":"7 (177.5)"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Top Set","reps":3,"load":175.0,"pct":80.0,"rpe":"8.5 (175)"},{"label":"Set 1","reps":4,"load":160.0,"pct":73.0,"rpe":"7.5 (160)"},{"label":"Set 2","reps":4,"load":160.0,"pct":73.0,"rpe":"7.5 (160)"},{"label":"Set 3","reps":4,"load":160.0,"pct":73.0,"rpe":"7.5 (160)"},{"label":"Set 4","reps":4,"load":160.0,"pct":73.0,"rpe":"7.5 (160)"}]}],"accessories":[{"name":"FFE Split Squat - Full Rom","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Quad Extensions","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Cable Tricep Pushdown","sets":"2","reps":"8-12","rpe":"9.0"}]},{"title":"Deadlift & Bench","notes":"","exercises":[{"name":"Sumo Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":3,"load":null,"pct":null,"rpe":"5 (185)"},{"label":"Set 2","reps":3,"load":null,"pct":null,"rpe":"6 (195)"},{"label":"Set 3","reps":3,"load":null,"pct":null,"rpe":"7 (205)"}]},{"name":"Close Grip Larsen Press","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":6,"load":null,"pct":null,"rpe":"7.5 (135)"},{"label":"Set 2","reps":6,"load":null,"pct":null,"rpe":"7.5 (135)"},{"label":"Set 3","reps":6,"load":null,"pct":null,"rpe":"7.5 (135)"}]},{"name":"CABLE PEC FLY - slight tempo to these","lift":"Other","track":false,"unit":"lbs","sets":[{"label":"Set 1","reps":10,"load":null,"pct":null,"rpe":"9.0"},{"label":"Set 2","reps":10,"load":null,"pct":null,"rpe":"9.0"}]}],"accessories":[{"name":"Single Leg Lying Ham Curl","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Upper Back Cable Row","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Dumbbell Bicep Curl","sets":"2","reps":"8-12","rpe":"9.0"}]},{"title":"Bench","notes":"","exercises":[{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":1,"load":null,"pct":null,"rpe":"8 (185)"},{"label":"Set 2","reps":1,"load":null,"pct":null,"rpe":"8 (185)"},{"label":"Set 3","reps":1,"load":null,"pct":null,"rpe":"8 (185)"},{"label":"Set 4","reps":1,"load":null,"pct":null,"rpe":"8 (185)"},{"label":"Set 5","reps":1,"load":null,"pct":null,"rpe":"8 (185)"}]},{"name":"Incline Db Press","lift":"Other","track":false,"unit":"kg","sets":[{"label":"Set 1","reps":10,"load":null,"pct":null,"rpe":"9.0"},{"label":"Set 2","reps":10,"load":null,"pct":null,"rpe":"9.0"}]}],"accessories":[{"name":"Cable Lateral Raise","sets":"2","reps":"8-12","rpe":"9.0"},{"name":"Cable Tricep Pushdown","sets":"2","reps":"8-12","rpe":"9.0"}]},{"title":"Sbd","notes":"","exercises":[{"name":"Comp Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":2,"load":null,"pct":null,"rpe":"6.5"},{"label":"Set 2","reps":2,"load":null,"pct":null,"rpe":"6.5"},{"label":"Set 3","reps":2,"load":null,"pct":null,"rpe":"6.5"}]},{"name":"Ssb Squat","lift":"Squat","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":null,"pct":null,"rpe":"7.5"},{"label":"Set 2","reps":5,"load":null,"pct":null,"rpe":"7.5"}]},{"name":"Sumo Deadlift","lift":"Deadlift","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":6,"load":null,"pct":null,"rpe":"6.0"},{"label":"Set 2","reps":6,"load":null,"pct":null,"rpe":"7.0"}]},{"name":"Comp Bench","lift":"Bench","track":true,"unit":"kg","sets":[{"label":"Set 1","reps":5,"load":null,"pct":null,"rpe":"7.5"},{"label":"Set 2","reps":5,"load":null,"pct":null,"rpe":"7.5"},{"label":"Set 3","reps":5,"load":null,"pct":null,"rpe":"7.5"}]}],"accessories":[]}]}]};
 const $ = id => document.getElementById(id);
 const dec = new TextDecoder();
-const css = () => getComputedStyle(document.documentElement);
-const tok = n => css().getPropertyValue(n).trim();
+const tok = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-let sets = [];             // {key, lift, load, demo, reps:[{r,mv,pv,rom,t,vl,at,path}]}
-let setOffset = 0, lift = "Squat";
-let sel = null;            // {s, r} selected rep (indexes); null = follow the latest
-let pending = null;        // path lines being assembled
-let device = null;
+// ---------------- state
+let programs = [], activePid = null, wk = 0, dy = 0;
+let log = [];               // every recorded set: {id, lift, load, name, plan:{pid,w,d,e,s}|null, target, demo, done, reps:[]}
+let next = null;            // {e, s} planned set that's up next in the open day
+let active = null;          // the set being recorded right now
+let sel = null;             // {id, r} rep picked in history
+let pendingPath = null, ignoreP = false, lastRepSet = null;
+let device = null, tab = "train", view = "home", homeWeek = null;
+let sync = { url: "", key: "", write: true, last: null }, queue = [], syncBusy = false, lastPull = 0;
+let whoop = { url: "", key: "", data: null, at: null }, restCfg = { hr: 110, min: 180, beep: true };
+let hr = { dev: null, now: null, hist: [] }, rest = { start: null, readyAt: null }, restTick = null, audio = null;
 
-// ---------- storage
 function load() {
   try {
-    const s = JSON.parse(localStorage.getItem("vbt-session-v2") || "null");
-    if (s) { sets = s.sets || []; setOffset = s.setOffset || 0; lift = s.lift || "Squat"; $("load").value = s.load ?? 140; $("vlCut").value = s.cut ?? 20; $("flip").checked = !!s.flip; }
+    const s = JSON.parse(localStorage.getItem("vbt-app-v3") || "null");
+    if (s) ({ programs = [], activePid = null, wk = 0, dy = 0, log = [], sync = sync, queue = [], whoop = whoop, restCfg = restCfg } = s);
+    const ui = JSON.parse(localStorage.getItem("vbt-ui-v3") || "{}");
+    if (ui.cut) $("vlCut").value = ui.cut; $("flip").checked = !!ui.flip; if (ui.tab) tab = ui.tab;
   } catch (e) {}
+  if (!programs.length && DEFAULT_PROGRAM) { programs = [JSON.parse(JSON.stringify(DEFAULT_PROGRAM))]; activePid = programs[0].id; }
+  if (!programs.find(p => p.id === activePid)) activePid = programs[0] ? programs[0].id : null;
 }
 function save() {
-  try { localStorage.setItem("vbt-session-v2", JSON.stringify({ sets, setOffset, lift, load: +$("load").value, cut: +$("vlCut").value, flip: $("flip").checked })); } catch (e) {}
+  try { localStorage.setItem("vbt-app-v3", JSON.stringify({ programs, activePid, wk, dy, log, sync, queue, whoop, restCfg })); } catch (e) { msg("Couldn't save on this device: storage is full or blocked.", true); }
+  try { localStorage.setItem("vbt-ui-v3", JSON.stringify({ cut: +$("vlCut").value, flip: $("flip").checked, tab })); } catch (e) {}
 }
 
-// ---------- helpers
-function zone(v) {
-  if (v > 0.75) return ["--z-fast", "Speed"];
-  if (v >= 0.5) return ["--z-mid", "Strength-speed"];
-  if (v >= 0.3) return ["--z-slow", "Strength"];
-  return ["--accent", "Near max"];
-}
-function msg(text, err) { const m = $("msg"); m.textContent = text; m.className = "msg" + (err ? " err" : ""); m.hidden = !text; }
+// ---------------- helpers
+const prog = () => programs.find(p => p.id === activePid) || null;
+const week = () => { const p = prog(); return p && p.weeks[wk] || null; };
+const day = () => { const w = week(); return w && w.days[dy] || null; };
+const r25 = x => Math.round(x / 2.5) * 2.5;
+function kg(x) { return x == null || x === "" ? "" : (Number.isInteger(+x) ? String(+x) : (+x).toFixed(1)); }
+function esc(s) { return String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function msg(text, kind) { const m = $("msg"); m.textContent = text || ""; m.className = "msg" + (kind === true ? " err" : kind ? " " + kind : ""); m.hidden = !text; }
 function raw(line) { const r = $("raw"); r.textContent = (line + "\n" + r.textContent).slice(0, 6000); }
-function kg(x) { return Number.isInteger(x) ? String(x) : x.toFixed(1); }
-function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+function zone(v) { return v > 0.75 ? ["--z-fast", "Speed"] : v >= 0.5 ? ["--z-mid", "Strength-speed"] : v >= 0.3 ? ["--z-slow", "Strength"] : ["--accent", "Near max"]; }
+function planLoad(ex, st) {
+  if (st.load != null) return st.load;
+  const p = prog(); if (st.pct != null && p && p.maxes[ex.lift]) return r25(p.maxes[ex.lift] * st.pct / 100);
+  return null;
+}
+function liftOf(name) {
+  const n = " " + name.toUpperCase() + " ";
+  if (/ (DB|DUMBBELL|MACHINE|CABLE|LEG PRESS|SMITH) /.test(n.replace(/[-–]/g, " "))) return { lift: "Other", track: false };
+  if (n.includes("DEADLIFT")) return { lift: "Deadlift", track: true };
+  if (n.includes("RDL")) return { lift: "Other", track: true };
+  if (n.includes("SQUAT")) return { lift: "Squat", track: true };
+  if (n.includes("BENCH") || n.includes("PRESS")) return { lift: "Bench", track: true };
+  return { lift: "Other", track: false };
+}
+const planKey = (pid, wn, d, e, s) => [pid, wn, d, e, s].join("\u241f");
+function keyOf(L) { const pl = L.plan; let wn = pl.wn; if (wn == null) { const P = programs.find(p => p.id === pl.pid); wn = P && P.weeks[pl.w] ? P.weeks[pl.w].name : pl.w; } return planKey(pl.pid, wn, pl.d, pl.e, pl.s); }
+function resultFor(e, s) {
+  const key = planKey(activePid, week().name, dy, e, s);
+  for (let i = log.length - 1; i >= 0; i--) if (log[i].plan && keyOf(log[i]) === key) return log[i];
+  return null;
+}
+function dayProgress(w, d) {
+  const p = prog(), D = p && p.weeks[w] && p.weeks[w].days[d]; let total = 0, done = 0, last = null;
+  if (!D) return { total, done, last };
+  D.exercises.forEach((ex, e) => { if (!ex.track) return; ex.sets.forEach((st, s) => { total++; let found = false;
+    const key = planKey(activePid, p.weeks[w].name, d, e, s);
+    for (let i = log.length - 1; i >= 0; i--) { const L = log[i]; if (L.plan && keyOf(L) === key) { if (L.done) { done++; if (!last || L.date > last) last = L.date; } found = true; break; } }
+    if (!found && st.vel) done++; }); });
+  return { total, done, last };
+}
+function upNextDay() {
+  // the newest week (last tab / last in the list) is the current one; the next day is its first unfinished day
+  const p = prog(); if (!p || !p.weeks.length) return null;
+  const w = p.weeks.length - 1;
+  for (let d = 0; d < p.weeks[w].days.length; d++) { const pr = dayProgress(w, d); if (pr.total && pr.done < pr.total) return { w, d }; }
+  return null;
+}
+function renderHome() {
+  const p = prog();
+  $("progName").textContent = p ? p.name : "";
+  if (!p || !p.weeks.length) { $("weeks").innerHTML = `<p class="empty">No program yet. Open the Program tab to import your coach's sheet or build one, or tap Free lift.</p>`; return; }
+  const cw = currentWeek();
+  if (homeWeek != null && !p.weeks[homeWeek]) homeWeek = null;
+  const wi = homeWeek != null ? homeWeek : cw;
+  const nav = [];
+  if (wi > 0) nav.push(`<button class="back" data-hw="${wi - 1}">‹ ${esc(p.weeks[wi - 1].name)}</button>`);
+  if (wi !== cw) nav.push(`<button class="back" data-hw="${cw}">Back to this week</button>`);
+  if (wi < p.weeks.length - 1) nav.push(`<button class="back" data-hw="${wi + 1}">${esc(p.weeks[wi + 1].name)} ›</button>`);
+  $("weeks").innerHTML = weekBlock(wi, wi === cw ? "This week" : wi < cw ? "Past week" : "Coming up") + `<div class="row" style="justify-content:space-between">${nav.join("")}</div>`;
+}
+function currentWeek() {
+  const p = prog(); if (!p || !p.weeks.length) return 0;
+  return p.weeks.length - 1;
+}
+function weekBlock(wi, tagText) {
+  const p = prog(), w = p.weeks[wi], un = upNextDay();
+  {
+    const cards = w.days.map((d, di) => {
+      const pr = dayProgress(wi, di), isUp = un && un.w === wi && un.d === di, isDone = pr.total && pr.done === pr.total;
+      const lifts = d.exercises.filter(e => e.track).map(e => e.name).join(" · ") || d.exercises.map(e => e.name).join(" · ");
+      const when = pr.last ? new Date(pr.last).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" }) : "";
+      const st = isDone ? `✓ Done ${when}` : pr.done ? `${pr.done} of ${pr.total} sets · ${when}` : isUp ? "Up next" : `${pr.total} barbell sets`;
+      return `<button class="daycard${isUp ? " upnext" : ""}${isDone ? " done" : ""}" data-w="${wi}" data-d="${di}">
+        <span class="daynum">${di + 1}</span><b>${esc(d.title || "Day " + (di + 1))}</b><span class="exl">${esc(lifts)}</span>
+        <span><span class="st">${esc(st)}</span><div class="prog"><i style="width:${pr.total ? Math.round(pr.done / pr.total * 100) : 0}%"></i></div></span></button>`;
+    }).join("");
+    return `<div class="weekgrp"><div class="head"><h2>${esc(w.name)}</h2>${tagText ? `<span class="tag">${esc(tagText)}</span>` : ""}</div><div class="days">${cards}</div></div>`;
+  }
+}
+function openDay(w, d) { wk = w; dy = d; view = "day"; pickNext(); save(); render(false); window.scrollTo(0, 0); }
+function avg(a) { return a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0; }
 
 // path as displayed: optional loop closure (lockout back over the start) and flip
-function shownPath(rep, liftName) {
+function shownPath(rep, lift) {
   if (!rep || !rep.path || rep.path.length < 2) return null;
-  const p = rep.path, n = p.length;
-  const close = $("closeLoop").checked && liftName !== "Deadlift";
+  const p = rep.path, n = p.length, close = $("closeLoop").checked && lift !== "Deadlift";
   const endX = p[n - 1][0], sgn = $("flip").checked ? -1 : 1;
   return p.map(([x, y], i) => [sgn * (close ? x - endX * i / (n - 1) : x), y]);
 }
 function drift(path) { if (!path) return null; const xs = path.map(p => p[0]); return Math.max(...xs) - Math.min(...xs); }
+function recalc(set) { let best = 0; set.reps.forEach((r, k) => { r.r = k + 1; best = Math.max(best, r.mv); r.vl = best > 0 ? Math.round((1 - r.mv / best) * 100) : 0; }); }
 
-// ---------- parsing the puck's lines
+// ---------------- next set logic
+function trackedSets() {
+  const d = day(); const out = [];
+  if (d) d.exercises.forEach((ex, e) => { if (ex.track) ex.sets.forEach((st, s) => out.push({ e, s })); });
+  return out;
+}
+function pickNext(after) {
+  const all = trackedSets(); if (!all.length) { next = null; return; }
+  let start = 0;
+  if (after) { const i = all.findIndex(o => o.e === after.e && o.s === after.s); start = i + 1; }
+  for (let k = 0; k < all.length; k++) { const o = all[(start + k) % all.length]; const r = resultFor(o.e, o.s); const sv = day().exercises[o.e].sets[o.s].vel; if ((!r || !r.done) && !(!r && sv)) { next = o; return; } }
+  next = null;
+}
+
+// ---------------- recording
+function startSet() {
+  const d = day();
+  let set;
+  if (next && d && view !== "free") {
+    const ex = d.exercises[next.e], st = ex.sets[next.s];
+    set = { id: Date.now(), lift: ex.lift, name: ex.name, label: st.label, load: +$("dockLoad").value || planLoad(ex, st) || 0,
+            plan: { pid: activePid, w: wk, wn: week().name, d: dy, e: next.e, s: next.s }, target: st.reps, week: week().name, day: dy + 1,
+            date: new Date().toISOString(), demo: false, done: false, reps: [] };
+    const old = resultFor(next.e, next.s); if (old && !old.done) log.splice(log.indexOf(old), 1);
+  } else {
+    set = { id: Date.now(), lift: "Squat", name: "Free set", label: "", load: +$("dockLoad").value || 0, plan: null, target: 0,
+            date: new Date().toISOString(), demo: false, done: false, reps: [] };
+  }
+  log.push(set); active = set; sel = null; msg("");
+  if (hr.now) { set.hrStart = hr.now; set.hrPeak = hr.now; }
+  stopRest(); save(); render(false);
+}
+function endSet(auto) {
+  const set = active; active = null;
+  if (set) {
+    if (!set.reps.length) log.splice(log.indexOf(set), 1);
+    else {
+      set.done = true;
+      startRest();
+      if (set.plan) {
+        queueVel(set);
+        const cur = { e: set.plan.e, s: set.plan.s };
+        pickNext(cur);
+        if (auto) msg(`Set done: ${set.reps.length} reps, average ${avg(set.reps.map(r => r.mv)).toFixed(2)} m/s.` + (next ? " Next set is ready." : " That's every barbell set for today."), "good");
+      }
+    }
+  }
+  save(); render(false);
+}
+
 function handleLine(line, demo = false) {
   line = line.trim(); if (!line) return;
   raw(line);
   let m = line.match(/^BAT\s+([\d.]+)V\s+(\d+)%/);
   if (m) { const b = $("bat"); b.textContent = `Battery ${m[2]}%`; b.title = `${(+m[1]).toFixed(2)} V`; b.className = "pill" + (+m[2] > 20 ? " on" : ""); return; }
-
   m = line.match(/^P\s+(\d+)\/(\d+)\s*(.*)$/);
   if (m) {
+    if (ignoreP) return;
     const k = +m[1], n = +m[2];
-    if (k === 1) pending = { n, pts: [] };
-    if (!pending) return;
-    m[3].trim().split(/\s+/).forEach(t => { const [x, y] = t.split(",").map(Number); if (isFinite(x) && isFinite(y)) pending.pts.push([x, y]); });
-    if (k === n) {
-      const s = sets[sets.length - 1], r = s && s.reps[s.reps.length - 1];
-      if (r) { r.path = pending.pts; save(); render(false); }
-      pending = null;
-    }
+    if (k === 1) pendingPath = { n, pts: [] };
+    if (!pendingPath) return;
+    m[3].trim().split(/\s+/).forEach(t => { const [x, y] = t.split(",").map(Number); if (isFinite(x) && isFinite(y)) pendingPath.pts.push([x, y]); });
+    if (k === n) { const r = lastRepSet && lastRepSet.reps[lastRepSet.reps.length - 1]; if (r) { r.path = pendingPath.pts; save(); render(false); } pendingPath = null; }
     return;
   }
-
-  m = line.match(/^S(\d+)\s+R(\d+)\s+MV\s+([-\d.]+)\s+PV\s+([-\d.]+)\s+ROM\s+([-\d.]+)\s+T\s+([-\d.]+)\s+VL\s+(-?\d+)%/);
+  m = line.match(/^S(\d+)\s+R(\d+)\s+MV\s+([-\d.]+)\s+PV\s+([-\d.]+)\s+ROM\s+([-\d.]+)\s+T\s+([-\d.]+)/);
   if (!m) return;
-  const key = (demo ? "D" : "S") + m[1] + "+" + setOffset;
-  let set = sets[sets.length - 1];
-  if (!set || set.key !== key) { set = { key, lift, load: +$("load").value || 0, demo, reps: [] }; sets.push(set); }
-  const rep = { r: set.reps.length + 1, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null,
-                at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) };
-  const best = Math.max(rep.mv, ...set.reps.map(x => x.mv));
-  rep.vl = best > 0 ? Math.round((1 - rep.mv / best) * 100) : 0;
-  set.reps.push(rep);
-  sel = null;
-  save(); render(true);
+  if (!active) {
+    ignoreP = true; pendingPath = null; raw("  ↑ ignored: no set running");
+    msg("Movement ignored because no set is running. Tap Start set before you lift."); return;
+  }
+  ignoreP = false;
+  const set = active; if (demo) set.demo = true;
+  set.reps.push({ r: set.reps.length + 1, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null,
+                  at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
+  recalc(set); lastRepSet = set;
+  if (set.target && set.reps.length >= set.target) endSet(true); else { save(); render(true); }
+  const lb = $("liveBox"); lb.classList.remove("flash"); void lb.offsetWidth; lb.classList.add("flash");
 }
 
-// ---------- render
-function current() {
-  if (sel && sets[sel.s] && sets[sel.s].reps[sel.r]) return { si: sel.s, set: sets[sel.s], rep: sets[sel.s].reps[sel.r] };
-  const si = sets.length - 1, set = sets[si];
-  return { si, set, rep: set && set.reps[set.reps.length - 1] };
-}
-
-function render(fresh) {
-  const { si, set, rep } = current();
+// ---------------- render: train
+function renderTrain(fresh) {
+  const p = prog();
+  const w = week();
+  $("dayChips").hidden = view === "free";
+  $("dayChips").innerHTML = w ? w.days.map((d, i) => `<button data-d="${i}" aria-pressed="${i === dy}">D${i + 1}</button>`).join("") : "";
+  const d = day(), box = $("dayView");
+  if (!d || view === "free") { box.innerHTML = `<div class="dayhead"><span class="daynum">·</span><div><h3>Free lift</h3><span class="which">Set the load below, tap Start set, and lift. Reps keep logging until you tap End set.</span></div></div>`; return; }
   const cut = +$("vlCut").value;
-  document.querySelectorAll("#liftChips button").forEach(b => b.setAttribute("aria-pressed", b.dataset.lift === lift));
+  let h = `<div class="dayhead"><span class="daynum">${dy + 1}</span><div><h3>${esc(d.title || "Day " + (dy + 1))}</h3><span class="which">${esc(w.name)}</span></div></div>`;
+  d.exercises.forEach((ex, e) => {
+    h += `<div class="ex${ex.track ? "" : " off"}"><div class="exhead"><h3>${esc(ex.name)}</h3>${ex.track ? "" : `<span class="which">no puck · ${esc(ex.unit || "")}</span>`}</div>
+      <div class="tablewrap"><table><thead><tr><th>Set</th><th>Reps</th><th>Load</th><th>%</th><th>RPE</th><th>Vel m/s</th><th></th></tr></thead><tbody>`;
+    ex.sets.forEach((st, s) => {
+      const res = ex.track ? resultFor(e, s) : null;
+      const isNext = next && next.e === e && next.s === s, isRec = active && active.plan && active.plan.e === e && active.plan.s === s && active.plan.d === dy && active.plan.w === wk;
+      const ld = planLoad(ex, st), pct = st.pct != null ? st.pct : (ld && p.maxes[ex.lift] ? Math.round(ld / p.maxes[ex.lift] * 100) : null);
+      let vel = "";
+      if (res && res.reps.length) {
+        const mvs = res.reps.map(r => r.mv), lossMax = Math.max(...res.reps.map(r => r.vl));
+        vel = `${avg(mvs).toFixed(2)}<small class="${lossMax >= cut ? "vlhi" : ""}">${mvs.map(v => v.toFixed(2)).join(" ")}</small>`;
+      }
+      if (!vel && st.vel) vel = `${esc(st.vel)}<small>from sheet</small>`;
+      const loadTxt = res && res.load && ld !== res.load ? `${kg(res.load)}*` : ld != null ? kg(ld) : "–";
+      const status = isRec ? `<span style="color:var(--accent)">● ${res ? res.reps.length : 0}/${st.reps}</span>` : res && res.done ? `<span class="check">✓</span>` : "";
+      h += `<tr class="${ex.track ? "plan" : ""}${isNext ? " next" : ""}${isRec ? " rec" : ""}${res && res.done ? " done" : ""}" ${ex.track ? `data-e="${e}" data-s="${s}"` : ""}>
+        <td>${esc(st.label)}</td><td>${st.reps}</td><td${res && res.done ? ` class="loadc" data-le="${e},${s}" title="Tap to change the load"` : ""}>${loadTxt}${res && res.done ? " ✎" : ""}</td><td>${pct != null ? pct + "%" : ""}</td><td>${esc(st.rpe || "")}</td><td class="vel">${vel}</td><td>${status}</td></tr>`;
+    });
+    h += `</tbody></table></div></div>`;
+  });
+  if (d.accessories && d.accessories.length) {
+    h += `<div class="ex off"><h3>Accessories</h3><div class="acc">${d.accessories.map(a => `<div><span>${esc(a.name)}</span><span>${esc(a.sets)} × ${esc(a.reps)}${a.rpe ? " · RPE " + esc(a.rpe) : ""}</span></div>`).join("")}</div></div>`;
+  }
+  if (d.notes) h += `<div class="ex off"><h3>Notes</h3><p class="note">${esc(d.notes)}</p></div>`;
+  box.innerHTML = h;
+}
 
+function renderDock() {
+  const d = day(), b = $("btnArm");
+  b.setAttribute("aria-pressed", !!active);
+  if (active) {
+    const lastMv = active.reps.length ? ` · last ${active.reps[active.reps.length - 1].mv.toFixed(2)} m/s` : "";
+    $("dockLabel").textContent = (active.target ? `Recording · ${active.reps.length} of ${active.target} reps` : `Recording · ${active.reps.length} reps`) + lastMv;
+    $("dockWhat").textContent = active.plan ? `${active.name} · ${active.label}` : "Free set";
+    b.textContent = "End set"; $("dockLoad").disabled = true; $("btnSim").hidden = false;
+    return;
+  }
+  $("dockLoad").disabled = false;
+  if (next && d && view !== "free") {
+    const ex = d.exercises[next.e], st = ex.sets[next.s], ld = planLoad(ex, st);
+    $("dockLabel").textContent = `Up next · ${st.label}`;
+    $("dockWhat").textContent = `${ex.name} · ${st.reps} × ${ld != null ? kg(ld) + " kg" : "RPE " + (st.rpe || "?")}`;
+    if (document.activeElement !== $("dockLoad")) $("dockLoad").value = ld != null ? ld : "";
+  } else {
+    const free = !d || view === "free";
+    $("dockLabel").textContent = free ? "Free lift" : "All barbell sets done";
+    $("dockWhat").textContent = free ? "Set the load, then Start set" : "Tap any set to redo it";
+  }
+  b.textContent = "Start set";
+}
+
+// ---------------- render: live + charts
+function shown() {
+  if (sel) { const s = log.find(x => x.id === sel.id); if (s && s.reps[sel.r]) return { set: s, rep: s.reps[sel.r] }; }
+  const s = active && active.reps.length ? active : lastRepSet || [...log].reverse().find(x => x.reps.length);
+  return { set: s, rep: s && s.reps[s.reps.length - 1] };
+}
+function renderLive() {
+  const { set, rep } = shown(), cut = +$("vlCut").value;
   $("liveTitle").textContent = sel ? "Selected rep" : "Last rep";
-  $("liveWhich").textContent = rep ? `Set ${si + 1} · rep ${rep.r}${sel ? " · tap the latest rep to follow live" : ""}` : "";
+  $("liveWhich").textContent = rep ? `${set.name}${set.label ? " · " + set.label : ""} · rep ${rep.r}` : "";
   if (rep) {
     $("mv").textContent = rep.mv.toFixed(2);
     const [c, name] = zone(rep.mv);
     $("zone").innerHTML = `<span class="dot" style="background:var(${c})"></span>${name}`;
     $("pv").textContent = rep.pv.toFixed(2) + " m/s";
     $("rom").textContent = Math.round(rep.rom * 100) + " cm";
-    $("vl").textContent = rep.vl + " %";
-    $("vlBox").classList.toggle("alert", rep.vl >= cut);
-    const d = drift(shownPath(rep, set.lift));
-    $("dx").textContent = d == null ? "–" : (d / 10).toFixed(1) + " cm";
-    if (fresh) { const b = $("liveBox"); b.classList.remove("flash"); void b.offsetWidth; b.classList.add("flash"); }
-  } else {
-    ["mv", "pv", "rom", "vl", "dx"].forEach(id => $(id).textContent = "–");
-  }
-  $("setTitle").textContent = set ? `Set ${si + 1} · ${set.lift} ${kg(set.load)} kg` : "Current set";
+    $("vl").textContent = rep.vl + " %"; $("vlBox").classList.toggle("alert", rep.vl >= cut);
+    const dd = drift(shownPath(rep, set.lift)); $("dx").textContent = dd == null ? "–" : (dd / 10).toFixed(1) + " cm";
+  } else ["mv", "pv", "rom", "vl", "dx"].forEach(id => $(id).textContent = "–");
+  $("setTitle").textContent = set ? `${set.name}${set.label ? " · " + set.label : ""} · ${kg(set.load)} kg` : "Current set";
   $("demoTag").hidden = !(set && set.demo);
-  drawChart(set, rep, cut);
-  drawPath(set, rep);
-  renderSessions(cut);
+  drawChart(set, rep, cut); drawPath(set, rep);
 }
-
 function drawChart(set, selRep, cut) {
-  const svg = $("chart"), W = svg.clientWidth || 600, H = 230, pl = 38, pr = 8, pt = 18, pb = 24;
-  const ink = tok("--muted"), line = tok("--line");
+  const svg = $("chart"), W = svg.clientWidth || 600, H = 220, pl = 38, pr = 8, pt = 18, pb = 24, ink = tok("--muted");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const reps = set ? set.reps : [];
   const vmax = Math.max(1.0, Math.ceil((Math.max(0, ...reps.map(r => r.mv)) + 0.1) * 4) / 4);
   const y = v => pt + (H - pt - pb) * (1 - v / vmax);
   let s = "";
-  for (let v = 0; v <= vmax + 1e-9; v += 0.25) {
-    s += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="${line}"/>`;
-    s += `<text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="${ink}">${v.toFixed(2)}</text>`;
-  }
-  if (!reps.length) { svg.innerHTML = s + `<text x="${(W + pl) / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">No reps yet</text>`; return; }
+  for (let v = 0; v <= vmax + 1e-9; v += 0.25) s += `<line x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}" stroke="${tok("--line")}"/><text x="${pl - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10.5" font-family="IBM Plex Mono, monospace" fill="${ink}">${v.toFixed(2)}</text>`;
+  if (!reps.length) { svg.innerHTML = s + `<text x="${(W + pl) / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">No reps yet</text>`; $("cutLegend").textContent = ""; return; }
   const best = Math.max(...reps.map(r => r.mv)), cutV = best * (1 - cut / 100);
   s += `<line x1="${pl}" x2="${W - pr}" y1="${y(cutV)}" y2="${y(cutV)}" stroke="${tok("--warn")}" stroke-width="1.5" stroke-dasharray="6 5"/>`;
-  const n = Math.max(reps.length, 6), slot = (W - pl - pr) / n, bw = Math.min(54, slot * 0.64);
+  const n = Math.max(reps.length, set.target || 0, 5), slot = (W - pl - pr) / n, bw = Math.min(54, slot * 0.64);
   reps.forEach((r, i) => {
     const x = pl + slot * i + (slot - bw) / 2;
-    const isSel = r === selRep;
-    s += `<rect x="${x}" y="${y(r.mv)}" width="${bw}" height="${y(0) - y(r.mv)}" rx="4" fill="${tok(zone(r.mv)[0])}" opacity="${r.vl >= cut ? 0.5 : 1}"${isSel ? ` stroke="${tok("--ink")}" stroke-width="2"` : ""}/>`;
-    s += `<text x="${x + bw / 2}" y="${y(r.mv) - 6}" text-anchor="middle" font-size="11.5" font-weight="600" font-family="IBM Plex Mono, monospace" fill="${tok("--ink")}">${r.mv.toFixed(2)}</text>`;
-    s += `<text x="${x + bw / 2}" y="${H - 7}" text-anchor="middle" font-size="11" fill="${ink}">R${r.r}</text>`;
+    s += `<rect x="${x}" y="${y(r.mv)}" width="${bw}" height="${y(0) - y(r.mv)}" rx="4" fill="${tok(zone(r.mv)[0])}" opacity="${r.vl >= cut ? 0.5 : 1}"${r === selRep ? ` stroke="${tok("--ink")}" stroke-width="2"` : ""}/>`;
+    s += `<text x="${x + bw / 2}" y="${y(r.mv) - 6}" text-anchor="middle" font-size="11.5" font-weight="600" font-family="IBM Plex Mono, monospace" fill="${tok("--ink")}">${r.mv.toFixed(2)}</text><text x="${x + bw / 2}" y="${H - 7}" text-anchor="middle" font-size="11" fill="${ink}">R${r.r}</text>`;
   });
+  for (let i = reps.length; i < (set.target || 0); i++) { const x = pl + slot * i + (slot - bw) / 2; s += `<rect x="${x}" y="${y(vmax) }" width="${bw}" height="${y(0) - y(vmax)}" rx="4" fill="none" stroke="${tok("--line")}" stroke-dasharray="4 4"/><text x="${x + bw / 2}" y="${H - 7}" text-anchor="middle" font-size="11" fill="${ink}">R${i + 1}</text>`; }
   svg.innerHTML = s;
-  $("cutLegend").textContent = `Dashed line: stop the set here (−${cut} % from the best rep, ${cutV.toFixed(2)} m/s).`;
+  $("cutLegend").textContent = `Dashed line: stop here (−${cut} % from the best rep, ${cutV.toFixed(2)} m/s).`;
 }
-
+// ---------------- bar path with a lifter figure (side view, mm; bar start = 0,0; figure faces +x = front)
+function ik(P0, P1, a, b, pick) {
+  let dx = P1[0] - P0[0], dy = P1[1] - P0[1], d = Math.hypot(dx, dy);
+  const dc = Math.min(Math.max(d, Math.abs(a - b) + 1), a + b - 1), ux = dx / (d || 1), uy = dy / (d || 1);
+  const x = (a * a - b * b + dc * dc) / (2 * dc), h = Math.sqrt(Math.max(0, a * a - x * x));
+  const c1 = [P0[0] + ux * x - uy * h, P0[1] + uy * x + ux * h], c2 = [P0[0] + ux * x + uy * h, P0[1] + uy * x - ux * h];
+  return pick(c1, c2);
+}
+const rad = d => d * Math.PI / 180, fwd = (c1, c2) => c1[0] > c2[0] ? c1 : c2;
+function liftKind(set, path) {
+  if (set.lift === "Bench") return "bench";
+  const ys = path.map(p => p[1]);
+  return Math.max(...ys) > -Math.min(...ys) ? "pull" : "squat";      // path goes up first = pull from the floor
+}
+function scene(kind, path) {
+  // fixed parts of the picture (floor, bench) and the box the figure needs
+  const ys = path.map(p => p[1]), ymin = Math.min(0, ...ys), ymax = Math.max(0, ...ys);
+  if (kind === "bench") { const S = [-30, -660], Bt = S[1] - 110; return { S, Bt, floor: Bt - 430, box: [S[0] - 420, Bt - 450, S[0] + 1350, 260], ymin, ymax }; }
+  if (kind === "pull") return { floor: -225, box: [-650, -260, 700, ymax + 980], ymin, ymax };
+  return { floor: -1530, box: [-650, -1560, 750, 330], ymin, ymax };
+}
+function pose(kind, sc, bx, by) {
+  const L = [], C = [];               // line segments and circles (head) in mm
+  const seg = (...pts) => { for (let i = 1; i < pts.length; i++) L.push([pts[i - 1], pts[i]]); };
+  if (kind === "bench") {
+    const S = sc.S, Bt = sc.Bt, Hp = [S[0] + 500, S[1] - 40], K = [Hp[0] + 360, Bt - 20], A = [K[0] - 70, sc.floor + 80];
+    const hand = [bx, by], E = ik(S, hand, 310, 300, fwd);
+    seg(S, Hp, K, A); seg([A[0] - 40, sc.floor], [A[0] + 200, sc.floor]); seg(S, E, hand);
+    seg(S, [S[0] - 150, S[1] + 15]); C.push([S[0] - 160, S[1] + 15, 95]);
+    return { L, C };
+  }
+  if (kind === "pull") {
+    const f = sc.ymax > 0 ? 1 - Math.min(1, Math.max(0, by / sc.ymax)) : 0, th = rad(4 + 56 * f);
+    const S = [bx + 45 * f - 15, by + 640], Hp = [S[0] - 520 * Math.sin(th), S[1] - 520 * Math.cos(th)], A = [-40, sc.floor + 80];
+    const K = ik(A, Hp, 440, 450, fwd);
+    seg([-110, sc.floor], [160, sc.floor]); seg(A, K, Hp, S); seg(S, [bx, by]);
+    { const Hd = [S[0] + 150 * Math.sin(th) + 25, S[1] + 150 * Math.cos(th)]; seg(S, Hd); C.push([Hd[0], Hd[1], 95]); }
+    return { L, C };
+  }
+  const f = sc.ymin < 0 ? Math.min(1, Math.max(0, by / sc.ymin)) : 0, th = rad(8 + 37 * f);
+  const S = [bx - 25, by - 55], Hp = [S[0] - 520 * Math.sin(th), S[1] - 520 * Math.cos(th)], A = [0, sc.floor + 80];
+  const K = ik(A, Hp, 440, 450, fwd), hand = [bx - 10, by], E = [Math.min(S[0], hand[0]) - 150, (S[1] + hand[1]) / 2 - 70];
+  seg([-70, sc.floor], [190, sc.floor]); seg(A, K, Hp, S); seg(S, E, hand);
+  { const Hd = [S[0] + 150 * Math.sin(th) + 20, S[1] + 150 * Math.cos(th)]; seg(S, Hd); C.push([Hd[0], Hd[1], 95]); }
+  return { L, C };
+}
+let pathAnim = null;
 function drawPath(set, selRep) {
-  const svg = $("path"), W = svg.clientWidth || 320, H = 300, pad = 22;
-  const ink = tok("--muted"), line = tok("--line");
+  const svg = $("path"), W = svg.clientWidth || 320, H = 300, pad = 14, ink = tok("--muted"), line = tok("--line");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  if (pathAnim) { cancelAnimationFrame(pathAnim); pathAnim = null; }
   const paths = set ? set.reps.map(r => ({ r, p: shownPath(r, set.lift) })).filter(o => o.p) : [];
   $("pathWhich").textContent = selRep ? `Rep ${selRep.r}` : "";
-  if (!paths.length) {
-    svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">${set && set.reps.length ? "No path for this set (needs firmware v0.5)" : "No reps yet"}</text>`;
-    return;
-  }
-  // equal scale on both axes, fitted to every rep in the set
-  let xmin = -60, xmax = 60, ymin = 0, ymax = 0;
-  paths.forEach(o => o.p.forEach(([x, y]) => { xmin = Math.min(xmin, x); xmax = Math.max(xmax, x); ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }));
-  const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2;
-  const span = Math.max((xmax - xmin) / (W - 2 * pad), (ymax - ymin) / (H - 2 * pad)) * 1.08;
+  if (!paths.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">${set && set.reps.length ? "No path (needs puck firmware v0.6)" : "No reps yet"}</text>`; return; }
+  const cur = paths.find(o => o.r === selRep) || paths[paths.length - 1];
+  const close = $("pathZoom").checked, kind = liftKind(set, cur.p), sc = scene(kind, cur.p);
+  let xmin, xmax, ymin, ymax;
+  if (close) {
+    xmin = -60; xmax = 60; ymin = 0; ymax = 0;
+    paths.forEach(o => o.p.forEach(([x, y]) => { xmin = Math.min(xmin, x); xmax = Math.max(xmax, x); ymin = Math.min(ymin, y); ymax = Math.max(ymax, y); }));
+  } else [xmin, ymin, xmax, ymax] = sc.box;
+  const cx = (xmin + xmax) / 2, cy = (ymin + ymax) / 2, span = Math.max((xmax - xmin) / (W - 2 * pad), (ymax - ymin) / (H - 2 * pad)) * (close ? 1.08 : 1);
   const X = x => W / 2 + (x - cx) / span, Y = y => H / 2 - (y - cy) / span;
+  const grid = close ? 50 : 100;
   let s = "";
-  const g0x = Math.floor((cx - (W / 2) * span) / 50) * 50, g1x = cx + (W / 2) * span;
-  const g0y = Math.floor((cy - (H / 2) * span) / 50) * 50, g1y = cy + (H / 2) * span;
-  for (let gx = g0x; gx <= g1x; gx += 50) s += `<line x1="${X(gx)}" x2="${X(gx)}" y1="0" y2="${H}" stroke="${line}" stroke-width="${gx === 0 ? 1.5 : 1}"/>`;
-  for (let gy = g0y; gy <= g1y; gy += 50) s += `<line x1="0" x2="${W}" y1="${Y(gy)}" y2="${Y(gy)}" stroke="${line}"/>`;
-  const d = p => p.map(([x, y], i) => `${i ? "L" : "M"}${X(x).toFixed(1)} ${Y(y).toFixed(1)}`).join(" ");
-  paths.filter(o => o.r !== selRep).forEach(o => s += `<path d="${d(o.p)}" fill="none" stroke="${tok("--path-old")}" stroke-width="2" stroke-linejoin="round"/>`);
-  const cur = paths.find(o => o.r === selRep);
-  if (cur) {
-    const p = cur.p; let lo = 0; p.forEach(([, y], i) => { if (y < p[lo][1]) lo = i; });
-    s += `<path d="${d(p.slice(0, lo + 1))}" fill="none" stroke="${tok("--muted")}" stroke-width="2.5" stroke-dasharray="5 4" stroke-linejoin="round"/>`;
-    s += `<path d="${d(p.slice(lo))}" fill="none" stroke="${tok(zone(selRep.mv)[0])}" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>`;
-    s += `<circle cx="${X(p[0][0])}" cy="${Y(p[0][1])}" r="5" fill="${tok("--path")}"/>`;
-    s += `<circle cx="${X(p[lo][0])}" cy="${Y(p[lo][1])}" r="4" fill="${tok("--panel")}" stroke="${tok("--path")}" stroke-width="2"/>`;
+  for (let gx = Math.floor((cx - W / 2 * span) / grid) * grid; gx <= cx + W / 2 * span; gx += grid) s += `<line x1="${X(gx)}" x2="${X(gx)}" y1="0" y2="${H}" stroke="${line}" stroke-width="${gx === 0 ? 1.5 : 1}" opacity="${close ? 1 : .55}"/>`;
+  for (let gy = Math.floor((cy - H / 2 * span) / grid) * grid; gy <= cy + H / 2 * span; gy += grid) s += `<line x1="0" x2="${W}" y1="${Y(gy)}" y2="${Y(gy)}" stroke="${line}" opacity="${close ? 1 : .55}"/>`;
+  if (!close) {
+    s += `<line x1="0" x2="${W}" y1="${Y(sc.floor)}" y2="${Y(sc.floor)}" stroke="${ink}" stroke-width="2"/>`;
+    if (kind === "bench") s += `<rect x="${X(sc.S[0] - 260)}" y="${Y(sc.Bt)}" width="${(1000) / span}" height="${45 / span}" rx="3" fill="${tok("--soft")}" stroke="${ink}"/><line x1="${X(sc.S[0] - 150)}" x2="${X(sc.S[0] - 150)}" y1="${Y(sc.Bt - 45)}" y2="${Y(sc.floor)}" stroke="${ink}" stroke-width="2"/><line x1="${X(sc.S[0] + 650)}" x2="${X(sc.S[0] + 650)}" y1="${Y(sc.Bt - 45)}" y2="${Y(sc.floor)}" stroke="${ink}" stroke-width="2"/>`;
+    s += `<text x="${W - 8}" y="16" text-anchor="end" font-size="11" fill="${ink}">front →</text>`;
   }
-  s += `<text x="8" y="${H - 8}" font-size="10.5" fill="${ink}">dashed = down · solid = up</text>`;
-  svg.innerHTML = s;
+  const d = p => p.map(([x, y], i) => `${i ? "L" : "M"}${X(x).toFixed(1)} ${Y(y).toFixed(1)}`).join(" ");
+  paths.filter(o => o !== cur).forEach(o => s += `<path d="${d(o.p)}" fill="none" stroke="${tok("--path-old")}" stroke-width="2"/>`);
+  const p = cur.p; let lo = 0; p.forEach(([, y], i) => { if (y < p[lo][1]) lo = i; });
+  s += `<path d="${d(p.slice(0, lo + 1))}" fill="none" stroke="${ink}" stroke-width="2.5" stroke-dasharray="5 4"/>`;
+  s += `<path d="${d(p.slice(lo))}" fill="none" stroke="${tok(zone(cur.r.mv)[0])}" stroke-width="3.5" stroke-linecap="round"/>`;
+  s += `<g id="figure"></g>`;
+  svg.innerHTML = s + `<text x="8" y="${H - 8}" font-size="10.5" fill="${ink}">dashed = down · solid = up${close ? "" : " · figure is to scale, not you"}</text>`;
+  const g = svg.querySelector("#figure"), body = tok("--muted"), plate = tok("--ink");
+  const frame = (bx, by) => {
+    let h = "";
+    if (!close) {
+      const P = pose(kind, sc, bx, by);
+      P.L.forEach(([a, b]) => h += `<line x1="${X(a[0]).toFixed(1)}" y1="${Y(a[1]).toFixed(1)}" x2="${X(b[0]).toFixed(1)}" y2="${Y(b[1]).toFixed(1)}" stroke="${body}" stroke-width="${Math.max(3, 70 / span)}" stroke-linecap="round" opacity=".55"/>`);
+      P.C.forEach(([x, y, r]) => h += `<circle cx="${X(x)}" cy="${Y(y)}" r="${r / span}" fill="${body}" opacity=".55"/>`);
+      h += `<circle cx="${X(bx)}" cy="${Y(by)}" r="${225 / span}" fill="none" stroke="${plate}" stroke-width="${Math.max(2, 40 / span)}" opacity=".45"/>`;
+    }
+    h += `<circle cx="${X(bx)}" cy="${Y(by)}" r="5" fill="${plate}"/>`;
+    g.innerHTML = h;
+  };
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (still || close) { frame(...p[close ? 0 : lo]); return; }
+  const n = p.length, dur = 2600, hold = 900; let t0 = null;
+  const tickA = ts => {
+    if (t0 == null) t0 = ts;
+    const t = (ts - t0) % (dur + hold), u = Math.min(1, t / dur) * (n - 1), i = Math.floor(u), k = u - i, q = p[Math.min(n - 1, i + 1)];
+    frame(p[i][0] + (q[0] - p[i][0]) * k, p[i][1] + (q[1] - p[i][1]) * k);
+    pathAnim = requestAnimationFrame(tickA);
+  };
+  pathAnim = requestAnimationFrame(tickA);
 }
 
-function renderSessions(cut) {
-  const box = $("sets"); $("noSets").hidden = sets.length > 0;
-  const open = new Set([...box.querySelectorAll("details[open]")].map(d => d.dataset.i));
-  const cur = current();
-  box.innerHTML = sets.map((s, i) => i).reverse().map(i => {
-    const s = sets[i];
-    const avg = s.reps.reduce((a, r) => a + r.mv, 0) / (s.reps.length || 1);
-    const isOpen = open.has(String(i)) || i === sets.length - 1;
-    const rows = s.reps.map((r, j) => {
-      const dd = drift(shownPath(r, s.lift));
-      return `<tr data-s="${i}" data-r="${j}" class="${cur.rep === r ? "sel" : ""}"><td>R${r.r}</td><td>${r.mv.toFixed(2)}</td><td>${r.pv.toFixed(2)}</td><td>${Math.round(r.rom * 100)}</td><td>${dd == null ? "–" : (dd / 10).toFixed(1)}</td><td class="${r.vl >= cut ? "vlhi" : ""}">${r.vl ? "−" + r.vl + "%" : "0%"}</td><td>${esc(r.at)}</td></tr>`;
-    }).join("");
-    return `<details class="set" data-i="${i}"${isOpen ? " open" : ""}><summary><span class="sname">Set ${i + 1} · ${esc(s.lift)} ${kg(s.load)} kg</span><span class="smeta">${s.reps.length} reps · avg ${avg.toFixed(2)} m/s</span>${s.demo ? '<span class="tag">Example</span>' : ""}</summary>
-      <div class="tablewrap"><table><thead><tr><th>Rep</th><th>Mean m/s</th><th>Peak m/s</th><th>ROM cm</th><th>Drift cm</th><th>Loss</th><th>Time</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+// ---------------- render: program tab
+function renderProgram() {
+  $("plist").innerHTML = programs.map(p => `<div class="pitem${p.id === activePid ? " on" : ""}"><div><b>${esc(p.name)}</b><div class="which">${p.weeks.length} weeks</div></div>
+    <div class="row">${p.id === activePid ? `<span class="tag" style="color:var(--ok)">In use</span>` : `<button data-use="${p.id}">Use</button>`}<button data-ren="${p.id}">Rename</button><button data-delp="${p.id}" class="x" aria-label="Delete ${esc(p.name)}">✕</button></div></div>`).join("")
+    || `<p class="empty">No programs yet. Import a week from Sheets or tap New program.</p>`;
+  $("syncUrl").value = sync.url; $("syncKey").value = sync.key; $("syncWrite").checked = sync.write !== false; setSyncStatus(syncLabel());
+  const p = prog();
+  $("maxS").value = p ? p.maxes.Squat || "" : ""; $("maxB").value = p ? p.maxes.Bench || "" : ""; $("maxD").value = p ? p.maxes.Deadlift || "" : "";
+  $("builder").hidden = !p;
+  if (p) {
+    $("bWeek").innerHTML = p.weeks.map((w, i) => `<option value="${i}"${i === bWeek ? " selected" : ""}>${esc(w.name)}</option>`).join("");
+    renderBuilder();
+  }
+}
+let bWeek = 0, bDraft = null;
+function setToText(ex) {
+  // group identical consecutive sets: 3x4 @ 160 rpe 5
+  const parts = []; let i = 0;
+  while (i < ex.sets.length) {
+    const a = ex.sets[i]; let n = 1;
+    while (i + n < ex.sets.length && ["reps", "load", "pct", "rpe"].every(k => ex.sets[i + n][k] === a[k])) n++;
+    let t = `${n}x${a.reps}`;
+    if (a.load != null) t += ` @ ${kg(a.load)}`; else if (a.pct != null) t += ` @ ${a.pct}%`;
+    if (a.rpe) t += ` rpe ${a.rpe}`;
+    parts.push(t); i += n;
+  }
+  return parts.join(", ");
+}
+function textToSets(txt) {
+  const sets = []; let k = 0;
+  txt.split(",").map(t => t.trim()).filter(Boolean).forEach(t => {
+    const m = t.match(/^(?:(\d+)\s*[x×]\s*)?(\d+)\s*(?:@\s*([\d.]+)\s*(%|kg)?)?\s*(?:rpe\s*([\d.\-]+))?/i);
+    if (!m) return;
+    const n = +(m[1] || 1);
+    for (let j = 0; j < n; j++) sets.push({ label: `Set ${++k}`, reps: +m[2], load: m[3] && m[4] !== "%" ? +m[3] : null, pct: m[3] && m[4] === "%" ? +m[3] : null, rpe: m[5] || "" });
+  });
+  return sets;
+}
+function renderBuilder() {
+  const p = prog(); const w = p.weeks[bWeek]; if (!w) return;
+  if (!bDraft || bDraft.src !== w) bDraft = { src: w, name: w.name, days: w.days.map(d => ({ title: d.title, notes: d.notes || "", accessories: d.accessories || [], ex: d.exercises.map(ex => ({ name: ex.name, txt: setToText(ex), unit: ex.unit, track: ex.track, lift: ex.lift })) })) };
+  $("bWeekName").value = bDraft.name;
+  $("bDays").innerHTML = bDraft.days.map((d, i) => `<div class="bday"><div class="row"><b style="font:800 22px var(--display);color:var(--accent)">${i + 1}</b><input class="inp" data-dt="${i}" value="${esc(d.title)}" placeholder="Day title, e.g. Squat & Bench" style="flex:1"><button class="x" data-dd="${i}" aria-label="Delete day ${i + 1}">✕</button></div>
+    ${d.ex.map((ex, j) => `<div class="brow"><input class="inp" data-en="${i},${j}" value="${esc(ex.name)}" placeholder="Exercise"><input class="inp presc" data-et="${i},${j}" value="${esc(ex.txt)}" placeholder="3x5 @ 160"><button class="x" data-ed="${i},${j}" aria-label="Delete exercise">✕</button></div>`).join("")}
+    <div><button data-ea="${i}">Add exercise</button></div></div>`).join("");
+}
+function saveBuilder() {
+  const p = prog(); const w = p.weeks[bWeek];
+  w.name = $("bWeekName").value.trim() || w.name;
+  w.days = bDraft.days.map(d => ({ title: d.title, notes: d.notes, accessories: d.accessories, exercises: d.ex.filter(ex => ex.name.trim()).map(ex => {
+    const L = liftOf(ex.name); return { name: ex.name.trim(), lift: L.lift, track: L.track && ex.unit !== "lbs", unit: ex.unit || "kg", sets: textToSets(ex.txt) }; }) }));
+  bDraft = null; save(); render(false); msg(`Saved ${w.name}.`, "good");
+}
+
+// ---------------- import from Sheets / CSV
+function parseSheet(text) {
+  const rows = text.replace(/\r/g, "").split("\n").map(r => (r.includes("\t") ? r.split("\t") : splitCsv(r)).map(c => c.trim()));
+  const U = s => (s || "").toUpperCase();
+  // simple table format
+  const hi = rows.findIndex(r => r.some(c => U(c) === "EXERCISE"));
+  if (hi >= 0) {
+    const h = rows[hi].map(U), col = n => h.findIndex(c => c.startsWith(n));
+    const cD = col("DAY"), cE = col("EXERCISE"), cS = col("SETS"), cR = col("REPS"), cL = h.findIndex(c => c.startsWith("LOAD") || c.startsWith("WEIGHT") || c === "KG"), cP = h.findIndex(c => c === "%" || c.startsWith("PERCENT")), cRPE = col("RPE");
+    const days = new Map();
+    rows.slice(hi + 1).forEach(r => {
+      const name = r[cE]; if (!name) return;
+      const dk = cD >= 0 ? r[cD] || "1" : "1";
+      if (!days.has(dk)) days.set(dk, { title: /^\d+$/.test(dk) ? "" : dk, notes: "", accessories: [], exercises: [] });
+      const d = days.get(dk); let ex = d.exercises[d.exercises.length - 1];
+      if (!ex || ex.name !== name) { const L = liftOf(name); ex = { name, lift: L.lift, track: L.track, unit: "kg", sets: [] }; d.exercises.push(ex); }
+      const n = parseInt(r[cS]) || 1;
+      for (let j = 0; j < n; j++) ex.sets.push({ label: `Set ${ex.sets.length + 1}`, reps: parseInt(r[cR]) || 0, load: parseFloat(r[cL]) || null, pct: cP >= 0 && parseFloat(r[cP]) ? parseFloat(r[cP]) : null, rpe: cRPE >= 0 ? r[cRPE] || "" : "" });
+    });
+    return [...days.values()];
+  }
+  // coach-sheet layout: Day number, title, exercise blocks with SETS | REPS | LOAD | % | RPE | VEL | VOL
+  const hr = rows.find(r => r.some(c => U(c) === "SETS") && r.some(c => U(c) === "REPS"));
+  if (!hr) throw new Error("I couldn't find a SETS / REPS header. Paste the whole week tab, or use columns Day, Exercise, Sets, Reps, Load, %, RPE.");
+  const H = hr.map(U), cS = H.indexOf("SETS"), cR = H.indexOf("REPS"), cL = H.findIndex(c => c.startsWith("LOAD")), cP = H.indexOf("%"), cRPE = H.indexOf("RPE"), cVol = H.indexOf("VOL");
+  const lastCol = cVol >= 0 ? cVol : cRPE + 2;
+  const days = []; let d = null, ex = null, mode = "main";
+  rows.forEach(r0 => {
+    const r = r0.slice(0, lastCol + 1); const left = r.slice(0, cS).filter(Boolean);
+    const txt = r.filter(Boolean).join(" ").trim(); if (!txt) return;
+    const T = U(txt);
+    if (left.length && /^\d{1,2}$/.test(left[0]) && (!d || +left[0] === days.length + 1) && !r[cR]) {
+      d = { title: left.slice(1).join(" "), notes: "", accessories: [], exercises: [] }; days.push(d); ex = null; mode = "main"; return;
+    }
+    if (!d) return;
+    if (r.some(c => U(c) === "SETS") && r.some(c => U(c) === "REPS")) { if (ex && mode === "main") ex.unit = T.includes("LBS") ? "lbs" : "kg"; return; }
+    if (T.startsWith("TOTAL") || U(left[0]) === "TOTAL") return;
+    if (T === "ACCESSORIES") { mode = "acc"; return; }
+    if (T === "NOTES") { mode = "notes"; return; }
+    if (mode === "notes") { d.notes = (d.notes + " " + txt).trim(); return; }
+    if (mode === "acc") { if (r[cS] || r[cR]) d.accessories.push({ name: left.join(" "), sets: r[cS], reps: r[cR], rpe: r[cRPE] || "" }); return; }
+    const label = left.join(" ");
+    if (/^(top set|set \d+|back.?off|single)/i.test(label) && r[cR]) {
+      if (!ex) return;
+      const ld = parseFloat((r[cL] || "").replace(",", "")), pc = parseFloat(r[cP]);
+      ex.sets.push({ label, reps: parseInt(r[cR]) || 0, load: isFinite(ld) && ld > 0 ? ld : null, pct: isFinite(pc) && pc > 0 ? pc : null, rpe: r[cRPE] || "" });
+      if (ex.unit === "lbs" || /LBS/.test(U(r[cL]))) ex.track = false;
+      return;
+    }
+    if (label && !r[cR] && !r[cS] && !/^\d+$/.test(label)) {
+      if (!d.title) { d.title = label; return; }
+      const L = liftOf(label); ex = { name: label, lift: L.lift, track: L.track, unit: "kg", sets: [] }; d.exercises.push(ex);
+    }
+  });
+  days.forEach(dd => dd.exercises.forEach(e => { if (e.unit === "lbs") e.track = false; }));
+  if (!days.length) throw new Error("No days found. Make sure the paste includes the day numbers (1, 2, 3…).");
+  return days;
+}
+function splitCsv(line) { const out = []; let cur = "", q = false; for (const ch of line) { if (ch === '"') q = !q; else if (ch === "," && !q) { out.push(cur); cur = ""; } else cur += ch; } out.push(cur); return out; }
+function doImport(text) {
+  try {
+    const days = parseSheet(text);
+    let p = prog();
+    if (!p) { p = { id: "p" + Date.now(), name: "My program", maxes: { Squat: 0, Bench: 0, Deadlift: 0 }, weeks: [] }; programs.push(p); activePid = p.id; }
+    const name = $("importName").value.trim() || `Week ${p.weeks.length + 1}`;
+    p.weeks.push({ name, days }); wk = p.weeks.length - 1; dy = 0; bWeek = wk; bDraft = null;
+    $("importText").value = ""; $("importName").value = "";
+    const nSets = days.reduce((a, d) => a + d.exercises.reduce((b, e) => b + e.sets.length, 0), 0);
+    pickNext(); save(); render(false);
+    msg(`Added ${name}: ${days.length} days, ${nSets} sets. Check it under Train.`, "good");
+  } catch (e) { msg(e.message, true); }
+}
+
+// ---------------- Google Sheets link
+function setSyncStatus(t) { $("syncStatus").textContent = t; }
+function syncLabel() {
+  if (!sync.url) return "Not linked";
+  const q = queue.length ? ` · ${queue.length} velocit${queue.length === 1 ? "y" : "ies"} waiting to upload` : "";
+  return (sync.last ? "Loaded " + new Date(sync.last).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Linked") + q;
+}
+async function pullProgram(first) {
+  if (!sync.url || syncBusy) return;
+  syncBusy = true; setSyncStatus("Loading from Sheets…"); lastPull = Date.now();
+  try {
+    const res = await fetch(sync.url + (sync.url.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(sync.key), { redirect: "follow" });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    if (!data.weeks || !data.weeks.length) throw new Error("The sheet has no tabs with a SETS / REPS header.");
+    const old = programs.find(p => p.id === "sheet");
+    const p = { id: "sheet", source: "sheet", name: data.name || "Google Sheet",
+                maxes: data.maxes || (old ? old.maxes : { Squat: 0, Bench: 0, Deadlift: 0 }), weeks: data.weeks };
+    if (old) programs[programs.indexOf(old)] = p; else programs.unshift(p);
+    if (first) { activePid = "sheet"; const u = (() => { wk = 0; dy = 0; return upNextDay(); })(); if (u) { wk = u.w; dy = u.d; } }
+    if (activePid === "sheet") { if (!p.weeks[wk]) wk = 0; if (!p.weeks[wk].days[dy]) dy = 0; }
+    sync.last = new Date().toISOString(); bDraft = null;
+    if (!active) pickNext();
+    save(); render(false);
+    if (first) msg(`Linked to “${p.name}”: ${p.weeks.length} week${p.weeks.length === 1 ? "" : "s"} loaded.`, "good");
+  } catch (e) {
+    if (first) msg("Couldn't load the sheet: " + (e.message || e) + " Check the link and key, and that the script is deployed with access set to Anyone.", true);
+  } finally { syncBusy = false; setSyncStatus(syncLabel()); }
+}
+function queueVel(set) {
+  const p = programs.find(x => x.id === set.plan.pid);
+  if (!p || p.source !== "sheet" || !sync.url || !sync.write) return;
+  const w = p.weeks.find(x => x.name === set.plan.wn) || p.weeks[set.plan.w], ex = w && w.days[set.plan.d] && w.days[set.plan.d].exercises[set.plan.e];
+  if (!w || !ex) return;
+  const mvs = set.reps.map(r => r.mv);
+  queue.push({ tab: w.tab || w.name, d: set.plan.d, e: set.plan.e, s: set.plan.s, name: ex.name, vel: +avg(mvs).toFixed(2), load: set.load || null,
+               note: `VBT puck · ${new Date(set.date).toLocaleDateString()} · ${kg(set.load)} kg\nReps (m/s): ${mvs.map(v => v.toFixed(2)).join(", ")}\nBest ${Math.max(...mvs).toFixed(2)} · loss ${Math.max(...set.reps.map(r => r.vl))} %` });
+  const sv = ex.sets[set.plan.s]; if (sv) { sv.vel = avg(mvs).toFixed(2); if (set.load) sv.load = set.load; }
+  save(); flushQueue();
+}
+function queueLoad(set) {
+  const p = programs.find(x => x.id === set.plan.pid);
+  if (!p || p.source !== "sheet" || !sync.url || !sync.write) return;
+  const w = p.weeks.find(x => x.name === set.plan.wn) || p.weeks[set.plan.w], ex = w && w.days[set.plan.d] && w.days[set.plan.d].exercises[set.plan.e];
+  if (!ex) return;
+  queue.push({ tab: w.tab || w.name, d: set.plan.d, e: set.plan.e, s: set.plan.s, name: ex.name, load: set.load });
+  if (ex.sets[set.plan.s]) ex.sets[set.plan.s].load = set.load;
+  save(); flushQueue();
+}
+async function flushQueue() {
+  if (!sync.url || !queue.length || flushQueue.busy) return;
+  flushQueue.busy = true;
+  try {
+    while (queue.length) {
+      const item = queue[0];
+      let data;
+      try {
+        const res = await fetch(sync.url, { method: "POST", body: JSON.stringify({ key: sync.key, ...item }), redirect: "follow" });
+        data = await res.json();
+      } catch (e) { break; }                       // offline: try again later
+      if (data.error) { msg(`Couldn't write to the sheet: ${data.error}`, true); queue.push(queue.shift()); break; }
+      queue.shift(); save();
+    }
+  } finally { flushQueue.busy = false; setSyncStatus(syncLabel()); }
+}
+
+// ---------------- render: history
+function renderPastWeeks() {
+  const p = prog(), cw = currentWeek(), box = $("pastWeeks");
+  if (!p || cw === 0) { $("pastBox").hidden = true; return; }
+  $("pastBox").hidden = false;
+  const open = new Set([...box.querySelectorAll("details[open]")].map(d => d.dataset.w));
+  box.innerHTML = Array.from({ length: cw }, (_, i) => cw - 1 - i).map(wi => {
+    const pr = p.weeks[wi].days.map((_, di) => dayProgress(wi, di)), done = pr.reduce((a, x) => a + x.done, 0), tot = pr.reduce((a, x) => a + x.total, 0);
+    return `<details class="set" data-w="${wi}"${open.has(String(wi)) ? " open" : ""}><summary><span class="sname">${esc(p.weeks[wi].name)}</span><span class="smeta">${p.weeks[wi].days.length} days · ${done}/${tot} sets logged</span></summary><div style="padding:4px 0 12px">${weekBlock(wi, "")}</div></details>`;
+  }).join("");
+}
+function renderHistory() {
+  renderPastWeeks();
+  const box = $("sets"), cut = +$("vlCut").value; $("noSets").hidden = log.some(s => s.reps.length);
+  const open = new Set([...box.querySelectorAll("details[open]")].map(d => d.dataset.id));
+  box.innerHTML = [...log].reverse().filter(s => s.reps.length).map((s, k) => {
+    const rows = s.reps.map((r, j) => { const dd = drift(shownPath(r, s.lift));
+      return `<tr class="rep${sel && sel.id === s.id && sel.r === j ? " sel" : ""}" data-id="${s.id}" data-r="${j}"><td>R${r.r}</td><td>${r.mv.toFixed(2)}</td><td>${r.pv.toFixed(2)}</td><td>${Math.round(r.rom * 100)}</td><td>${dd == null ? "–" : (dd / 10).toFixed(1)}</td><td class="${r.vl >= cut ? "vlhi" : ""}">${r.vl ? "−" + r.vl + "%" : "0%"}</td><td><button class="del" data-del="${s.id},${j}" aria-label="Delete rep ${r.r}">✕</button></td></tr>`; }).join("");
+    const when = new Date(s.date).toLocaleDateString([], { month: "short", day: "numeric" });
+    return `<details class="set" data-id="${s.id}"${open.has(String(s.id)) || k === 0 ? " open" : ""}><summary><span class="sname">${esc(s.name)}${s.label ? " · " + esc(s.label) : ""} · ${kg(s.load)} kg</span><span class="smeta">${when}${s.week ? " · " + esc(s.week) + " D" + s.day : ""} · ${s.reps.length}${s.target ? "/" + s.target : ""} reps · avg ${avg(s.reps.map(r => r.mv)).toFixed(2)} m/s${s.hrPeak ? " · ♥ peak " + s.hrPeak : ""}</span>${s.demo ? '<span class="tag">Example</span>' : ""}</summary>
+      <div class="tablewrap"><table><thead><tr><th>Rep</th><th>Mean</th><th>Peak</th><th>ROM cm</th><th>Drift cm</th><th>Loss</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
   }).join("");
 }
 
-// ---------- Bluetooth
+function render(fresh) {
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
+  ["train", "program", "history", "whoop"].forEach(t => $("tab-" + t).hidden = t !== tab);
+  if (active && view === "home") view = "day";
+  $("homeView").hidden = view !== "home"; $("dayWrap").hidden = view === "home"; $("dock").hidden = tab !== "train" || view === "home";
+  if (view === "home") { renderHome(); renderHomeRec(); } else { renderTrain(fresh); renderDock(); renderLive(); }
+  if (tab === "program") renderProgram();
+  if (tab === "history") renderHistory();
+  if (tab === "whoop") renderWhoop();
+  renderRestDock();
+}
+
+// ---------------- WHOOP: recovery
+const recClass = v => v == null ? "" : v >= 67 ? "r-good" : v >= 34 ? "r-mid" : "r-low";
+const ymd = d => { const x = new Date(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`; };
+function todayRec() { const r = whoop.data && whoop.data.recovery; return r && r.length ? r[0] : null; }
+function renderHomeRec() {
+  const r = todayRec(), box = $("homeRec");
+  if (!r) { box.hidden = true; return; }
+  box.hidden = false;
+  box.innerHTML = `<span class="chip ${recClass(r.score)}"><i></i>Recovery ${Math.round(r.score)} % · HRV ${Math.round(r.hrv)} ms · rest HR ${Math.round(r.rhr)}</span>`;
+}
+function renderWhoop() {
+  $("wUrl").value = whoop.url; $("wKey").value = whoop.key;
+  $("wLinked").textContent = whoop.url ? (whoop.at ? "Updated " + new Date(whoop.at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Link saved, sign in next") : "Not linked";
+  $("restHr").value = restCfg.hr; $("restMin").value = restCfg.min; $("restBeep").checked = restCfg.beep;
+  const D = whoop.data;
+  if (D && (D.recovery || []).length) {
+    const r = D.recovery[0], sl = (D.sleep || [])[0], cy = (D.cycles || []).find(c => c.date !== ymd(new Date())) || (D.cycles || [])[0];
+    $("wToday").innerHTML = `<div class="rec"><div class="ring ${recClass(r.score)}" style="--p:${Math.round(r.score)}"><div><span><b>${Math.round(r.score)}</b><br><small>Recovery</small></span></div></div>
+      <div class="mini"><div class="stat"><small>HRV</small><b>${Math.round(r.hrv)} ms</b></div><div class="stat"><small>Resting HR</small><b>${Math.round(r.rhr)}</b></div>
+      <div class="stat"><small>Sleep${sl ? " · " + sl.hours.toFixed(1) + " h" : ""}</small><b>${sl ? Math.round(sl.perf) + " %" : "–"}</b></div><div class="stat"><small>Strain yesterday</small><b>${cy ? cy.strain.toFixed(1) : "–"}</b></div></div></div>
+      <p class="note">${r.score >= 67 ? "Green: a good day to push the top sets." : r.score >= 34 ? "Yellow: train as planned and watch the velocity loss." : "Red: consider holding loads and stopping sets earlier."}</p>`;
+  }
+  // two-week table, joined with your logged bar speed per day
+  const byDay = {};
+  log.forEach(s => s.reps.forEach(r => { const k = ymd(s.date); (byDay[k] = byDay[k] || []).push(r.mv); }));
+  const days = new Set([...(D ? (D.recovery || []).map(x => x.date) : []), ...Object.keys(byDay)]);
+  const find = (arr, d) => (arr || []).find(x => x.date === d);
+  $("wRows").innerHTML = [...days].filter(Boolean).sort().reverse().slice(0, 14).map(d => {
+    const r = D && find(D.recovery, d), sl = D && find(D.sleep, d), cy = D && find(D.cycles, d), v = byDay[d];
+    return `<tr><td>${new Date(d + "T12:00").toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</td>
+      <td>${r ? `<span class="chip ${recClass(r.score)}"><i></i>${Math.round(r.score)}%</span>` : "–"}</td><td>${r ? Math.round(r.hrv) : "–"}</td><td>${r ? Math.round(r.rhr) : "–"}</td>
+      <td>${sl ? Math.round(sl.perf) + "%" : "–"}</td><td>${cy ? cy.strain.toFixed(1) : "–"}</td><td>${v ? avg(v).toFixed(2) : ""}</td></tr>`;
+  }).join("") || `<tr><td colspan="7" class="empty" style="text-align:left">Nothing yet.</td></tr>`;
+  drawHr();
+}
+async function pullWhoop(showErr) {
+  if (!whoop.url) return;
+  $("wStatus").textContent = "Loading from WHOOP…";
+  try {
+    const res = await fetch(whoop.url + (whoop.url.includes("?") ? "&" : "?") + "key=" + encodeURIComponent(whoop.key), { redirect: "follow" });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    whoop.data = data; whoop.at = data.at; save(); $("wStatus").textContent = ""; render(false);
+  } catch (e) { $("wStatus").textContent = "Couldn't load WHOOP data: " + (e.message || e); if (showErr) msg("WHOOP: " + (e.message || e), true); }
+}
+
+// ---------------- WHOOP: live heart rate (standard Bluetooth heart rate service)
+async function connectHr() {
+  if (!navigator.bluetooth) { msg("This browser can't use Bluetooth. Use Bluefy on iPhone, or Chrome / Edge.", true); return; }
+  try {
+    hr.dev = await navigator.bluetooth.requestDevice({ filters: [{ services: ["heart_rate"] }], optionalServices: ["heart_rate"] });
+    hr.dev.addEventListener("gattserverdisconnected", () => { hr.now = null; $("btnHr").textContent = "Connect WHOOP"; $("hrPill").hidden = true; render(false);
+      setTimeout(() => { if (hr.dev) openHr().catch(() => {}); }, 2000); });
+    await openHr();
+  } catch (e) { if (e.name !== "NotFoundError") msg("Couldn't connect to the heart rate strap: " + e.message, true); else msg("No strap picked. Turn on Broadcast Heart Rate in the WHOOP app, then try again."); }
+}
+async function openHr() {
+  const srv = await hr.dev.gatt.connect(), svc = await srv.getPrimaryService("heart_rate"), ch = await svc.getCharacteristic("heart_rate_measurement");
+  ch.addEventListener("characteristicvaluechanged", e => { const v = e.target.value, f = v.getUint8(0); onHr(f & 1 ? v.getUint16(1, true) : v.getUint8(1)); });
+  await ch.startNotifications();
+  $("btnHr").textContent = "Disconnect"; $("hrPill").hidden = false;
+}
+function onHr(bpm) {
+  if (!bpm) return;
+  hr.now = bpm; const t = Date.now();
+  hr.hist.push({ t, bpm }); while (hr.hist.length && t - hr.hist[0].t > 600000) hr.hist.shift();
+  if (active) { active.hrPeak = Math.max(active.hrPeak || 0, bpm); if (!active.hrStart) active.hrStart = bpm; }
+  $("hrPill").textContent = "♥ " + bpm; $("hrPill").hidden = false;
+  if (tab === "whoop") { $("hrNow").textContent = bpm; drawHr(); }
+  restUpdate();
+}
+function drawHr() {
+  const svg = $("hrChart"), W = svg.clientWidth || 300, H = 90, ink = tok("--muted");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  $("hrNow").textContent = hr.now || "–";
+  const z = hr.now ? (hr.now >= 160 ? "Hard" : hr.now >= 130 ? "Working" : hr.now <= restCfg.hr ? "Recovered" : "Recovering") : "";
+  $("hrZone").textContent = z;
+  if (hr.hist.length < 2) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="12" fill="${ink}">${hr.dev ? "Waiting for heart rate…" : "Not connected"}</text>`; return; }
+  const t1 = Date.now(), t0 = t1 - 600000, lo = 50, hi = Math.max(190, ...hr.hist.map(p => p.bpm));
+  const X = t => (t - t0) / 600000 * W, Y = b => H - 6 - (b - lo) / (hi - lo) * (H - 12);
+  const line = hr.hist.map((p, i) => `${i ? "L" : "M"}${X(p.t).toFixed(1)} ${Y(p.bpm).toFixed(1)}`).join(" ");
+  svg.innerHTML = `<line x1="0" x2="${W}" y1="${Y(restCfg.hr)}" y2="${Y(restCfg.hr)}" stroke="${tok("--ok")}" stroke-dasharray="4 4"/>
+    <path d="${line}" fill="none" stroke="${tok("--accent")}" stroke-width="2.5" stroke-linejoin="round"/>
+    <text x="4" y="12" font-size="10.5" fill="${ink}">last 10 min · dashed = ready line ${restCfg.hr}</text>`;
+}
+
+// ---------------- rest timer
+function startRest() { rest.start = Date.now(); rest.readyAt = null; clearInterval(restTick); restTick = setInterval(restUpdate, 1000); restUpdate(); }
+function stopRest() { rest.start = null; rest.readyAt = null; clearInterval(restTick); restTick = null; restUpdate(); }
+function mmss(ms) { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
+function beep() {
+  try { audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25].forEach(dt => { const o = audio.createOscillator(), g = audio.createGain(); o.frequency.value = 880; o.connect(g); g.connect(audio.destination);
+      g.gain.setValueAtTime(0.25, audio.currentTime + dt); g.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + dt + 0.2); o.start(audio.currentTime + dt); o.stop(audio.currentTime + dt + 0.22); });
+  } catch (e) {}
+  try { navigator.vibrate && navigator.vibrate([200, 100, 200]); } catch (e) {}
+}
+function restUpdate() {
+  if (!rest.start) { $("restClock").textContent = "0:00"; $("restState").textContent = "Starts by itself when a set ends."; renderRestDock(); return; }
+  const el = Date.now() - rest.start, hrOk = hr.now == null || hr.now <= restCfg.hr, timeOk = el >= restCfg.min * 1000;
+  if (!rest.readyAt && hrOk && timeOk) { rest.readyAt = Date.now(); if (restCfg.beep) beep(); }
+  $("restClock").textContent = mmss(el);
+  $("restState").innerHTML = rest.readyAt ? `<span class="ready">Ready for the next set ✓</span>` :
+    !timeOk ? `Minimum rest: ${mmss(restCfg.min * 1000 - el)} to go${hr.now ? ` · ♥ ${hr.now}` : ""}` : `Waiting for heart rate to drop under ${restCfg.hr} (now ${hr.now})`;
+  renderRestDock();
+}
+function renderRestDock() {
+  if (active || !rest.start || tab !== "train" || view === "home") return;
+  const el = Date.now() - rest.start;
+  $("dockLabel").textContent = rest.readyAt ? `Rested ${mmss(el)} · ready ✓` : `Resting ${mmss(el)}${hr.now ? " · ♥ " + hr.now : ""}`;
+}
+
+// ---------------- Bluetooth
 async function connect() {
-  if (!navigator.bluetooth) { msg("This browser can't use Bluetooth. Use Chrome or Edge on a computer or Android, or the Bluefy browser on iPhone.", true); return; }
+  if (!navigator.bluetooth) { msg("This browser can't use Bluetooth. Use the Bluefy browser on iPhone, or Chrome / Edge on a computer or Android.", true); return; }
   try {
     msg("");
     device = await navigator.bluetooth.requestDevice({ filters: [{ services: [SVC] }, { name: "VBT-Puck" }], optionalServices: [SVC] });
@@ -405,93 +1160,154 @@ async function connect() {
     await openGatt();
   } catch (e) {
     if (e.name === "NotFoundError") msg("No puck picked. Switch it on, keep it close, and make sure no other phone or laptop is connected to it.");
-    else if (e.name === "SecurityError") msg("Bluetooth is blocked on this page. Open the app from your GitHub Pages link in Chrome, Edge or Bluefy.", true);
+    else if (e.name === "SecurityError") msg("Bluetooth is blocked on this page. Open the app from your GitHub Pages link in Bluefy, Chrome or Edge.", true);
     else msg("Couldn't connect: " + e.message, true);
   }
 }
 async function openGatt() {
   setConn("Connecting…", false);
-  const server = await device.gatt.connect();
-  const svc = await server.getPrimaryService(SVC);
-  const rep = await svc.getCharacteristic(REP);
+  const server = await device.gatt.connect(), svc = await server.getPrimaryService(SVC), rep = await svc.getCharacteristic(REP);
   rep.addEventListener("characteristicvaluechanged", e => handleLine(dec.decode(e.target.value)));
   await rep.startNotifications();
-  try {
-    const bat = await svc.getCharacteristic(BAT);
-    bat.addEventListener("characteristicvaluechanged", e => handleLine(dec.decode(e.target.value)));
-    await bat.startNotifications();
-    handleLine(dec.decode(await bat.readValue()));
-  } catch (e) {}
-  setConn("Connected", true);
-  $("btnConnect").textContent = "Disconnect";
+  try { const bat = await svc.getCharacteristic(BAT); bat.addEventListener("characteristicvaluechanged", e => handleLine(dec.decode(e.target.value))); await bat.startNotifications(); handleLine(dec.decode(await bat.readValue())); } catch (e) {}
+  setConn("Connected", true); $("btnConnect").textContent = "Disconnect";
 }
 function setConn(t, on) { const c = $("conn"); c.textContent = t; c.className = "pill" + (on ? " on" : ""); }
 async function onDisconnect() {
   $("btnConnect").textContent = "Connect puck";
-  for (let i = 0; i < 5 && device && !device.gatt.connected; i++) {
-    setConn("Reconnecting…", false);
-    try { await new Promise(r => setTimeout(r, 1500)); await openGatt(); return; } catch (e) {}
-  }
+  for (let i = 0; i < 5 && device && !device.gatt.connected; i++) { setConn("Reconnecting…", false); try { await new Promise(r => setTimeout(r, 1500)); await openGatt(); return; } catch (e) {} }
   setConn("Not connected", false);
 }
-$("btnConnect").onclick = () => {
-  if (device && device.gatt.connected) { const d = device; device = null; d.gatt.disconnect(); setConn("Not connected", false); $("btnConnect").textContent = "Connect puck"; }
-  else connect();
-};
+$("btnConnect").onclick = () => { if (device && device.gatt.connected) { const d = device; device = null; d.gatt.disconnect(); setConn("Not connected", false); $("btnConnect").textContent = "Connect puck"; } else connect(); };
 
-// ---------- controls
-$("liftChips").onclick = e => { const b = e.target.closest("button"); if (!b) return; lift = b.dataset.lift; $("closeLoop").checked = lift !== "Deadlift"; save(); render(false); };
-$("btnNewSet").onclick = () => { setOffset++; sel = null; save(); msg(`The next rep starts set ${sets.length + 1}: ${lift} ${$("load").value} kg.`); };
-["vlCut", "load", "flip", "closeLoop"].forEach(id => $(id).addEventListener("change", () => { save(); render(false); }));
+// ---------------- simulate (same line format as the puck)
+function simulate() {
+  if (!active) startSet();
+  const set = active, n = set.target || 5, depth = set.lift === "Bench" ? 420 : set.lift === "Deadlift" ? 560 : 600;
+  const base = Math.max(0.3, 0.95 - (set.load || 100) / 400 + Math.random() * 0.08); let i = set.reps.length;
+  const tick = () => {
+    if (active !== set || i >= n) return;
+    const mv = Math.max(0.15, base * (1 - 0.05 * i) + (Math.random() - .5) * 0.03);
+    handleLine(`S9 R${i + 1} MV ${mv.toFixed(2)} PV ${(mv * 1.45).toFixed(2)} ROM ${(depth / 1000 + Math.random() * .02).toFixed(2)} T ${(depth / 1000 / mv).toFixed(2)} VL 0% DX 0`, true);
+    const pts = [], fwd = 25 + i * 5;
+    for (let k = 0; k < 40; k++) { const u = k / 39;
+      const y = set.lift === "Deadlift" ? depth * (0.5 - 0.5 * Math.cos(Math.PI * u)) : -depth * Math.sin(Math.PI * u);
+      const x = set.lift === "Bench" ? 60 * Math.sin(Math.PI * u) * (u < .5 ? 1 : .8) - 25 * u : (set.lift === "Deadlift" ? -0.6 : 1) * fwd * Math.sin(Math.PI * u) * (u < .5 ? .7 : 1);
+      pts.push(`${Math.round(x + (Math.random() - .5) * 4)},${Math.round(y)}`); }
+    for (let L = 0; L < 4; L++) handleLine(`P ${L + 1}/4 ` + pts.slice(L * 10, L * 10 + 10).join(" "), true);
+    i++; if (!set.target && i >= n) { endSet(false); return; } setTimeout(tick, 600);
+  };
+  tick();
+}
+
+// ---------------- events
+document.querySelector(".tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.tab; save(); render(false); window.scrollTo(0, 0); };
+$("weeks").onclick = e => {
+  const n = e.target.closest("[data-hw]"); if (n) { homeWeek = +n.dataset.hw === currentWeek() ? null : +n.dataset.hw; render(false); return; }
+  const c = e.target.closest(".daycard"); if (c) openDay(+c.dataset.w, +c.dataset.d);
+};
+$("pastWeeks").onclick = e => { const c = e.target.closest(".daycard"); if (c) { tab = "train"; openDay(+c.dataset.w, +c.dataset.d); } };
+$("btnBack").onclick = () => { if (active) { msg("Finish the set first: tap End set."); return; } view = "home"; sel = null; homeWeek = null; msg(""); render(false); window.scrollTo(0, 0); };
+$("btnFree").onclick = () => { view = "free"; next = null; render(false); window.scrollTo(0, 0); };
+$("dayChips").onclick = e => { const b = e.target.closest("button"); if (!b || active) return; dy = +b.dataset.d; view = "day"; pickNext(); save(); render(false); };
+$("dayView").onclick = e => {
+  const lc = e.target.closest("td[data-le]");
+  if (lc && !lc.querySelector("input")) {
+    const [ei, si] = lc.dataset.le.split(",").map(Number), res = resultFor(ei, si);
+    lc.innerHTML = `<input type="number" step="2.5" inputmode="decimal" class="inp" style="width:78px" value="${res.load || ""}" aria-label="Load in kg">`;
+    const inp = lc.querySelector("input"); inp.focus(); inp.select();
+    const commit = () => { const v = parseFloat(inp.value); if (isFinite(v) && v > 0 && v !== res.load) { res.load = v; queueLoad(res); } save(); render(false); };
+    inp.onkeydown = ev => { if (ev.key === "Enter") inp.blur(); }; inp.onblur = commit;
+    return;
+  }
+  if (lc) return;
+  const tr = e.target.closest("tr[data-e]"); if (!tr || active) return; next = { e: +tr.dataset.e, s: +tr.dataset.s }; render(false); };
+$("btnArm").onclick = () => active ? endSet(false) : startSet();
+$("btnSim").onclick = simulate; $("btnDemo").onclick = () => { tab = "train"; if (view === "home") { const u = upNextDay(); if (u) { wk = u.w; dy = u.d; view = "day"; pickNext(); } else view = "free"; } simulate(); };
+["vlCut", "flip", "closeLoop", "pathZoom"].forEach(id => $(id).addEventListener("change", () => { save(); render(false); }));
 $("sets").onclick = e => {
-  const tr = e.target.closest("tr[data-s]"); if (!tr) return;
-  const s = +tr.dataset.s, r = +tr.dataset.r;
-  const latest = s === sets.length - 1 && r === sets[s].reps.length - 1;
-  sel = latest ? null : { s, r }; render(false);
-  $("liveBox").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const del = e.target.closest("[data-del]");
+  if (del) { const [id, j] = del.dataset.del.split(",").map(Number); const s = log.find(x => x.id === id); s.reps.splice(j, 1); recalc(s); if (!s.reps.length) log.splice(log.indexOf(s), 1); sel = null; save(); render(false); return; }
+  const tr = e.target.closest("tr[data-id]"); if (!tr) return; sel = { id: +tr.dataset.id, r: +tr.dataset.r }; tab = "train"; render(false); $("liveBox").scrollIntoView({ block: "start" });
 };
 $("btnClear").onclick = () => { $("clearConfirm").hidden = false; };
 $("clearNo").onclick = () => { $("clearConfirm").hidden = true; };
-$("clearYes").onclick = () => { sets = []; setOffset = 0; sel = null; save(); $("clearConfirm").hidden = true; $("raw").textContent = ""; render(false); };
+$("clearYes").onclick = () => { log = []; active = null; sel = null; lastRepSet = null; $("clearConfirm").hidden = true; $("raw").textContent = ""; pickNext(); save(); render(false); };
 $("btnCsv").onclick = () => {
-  const rows = [["set", "lift", "load_kg", "rep", "mean_mps", "peak_mps", "rom_m", "time_s", "vel_loss_pct", "drift_mm", "clock", "example", "path_mm"]];
-  sets.forEach((s, i) => s.reps.forEach(r => {
-    const p = shownPath(r, s.lift), dd = drift(p);
-    rows.push([i + 1, s.lift, s.load, r.r, r.mv, r.pv, r.rom, r.t, r.vl, dd == null ? "" : Math.round(dd), r.at, s.demo ? "yes" : "no", p ? p.map(q => q.map(Math.round).join(":")).join(" ") : ""]);
-  }));
-  const blob = new Blob([rows.map(r => r.join(",")).join("\n")], { type: "text/csv" });
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-  a.download = "vbt_session_" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); a.remove();
+  const rows = [["date", "week", "day", "exercise", "set", "load_kg", "planned_reps", "rep", "mean_mps", "peak_mps", "rom_m", "time_s", "vel_loss_pct", "drift_mm", "example"]];
+  log.forEach(s => s.reps.forEach(r => { const dd = drift(shownPath(r, s.lift)); rows.push([s.date.slice(0, 10), s.week || "", s.day || "", `"${s.name}"`, s.label || "", s.load, s.target || "", r.r, r.mv, r.pv, r.rom, r.t, r.vl, dd == null ? "" : Math.round(dd), s.demo ? "yes" : "no"]); }));
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.map(r => r.join(",")).join("\n")], { type: "text/csv" }));
+  a.download = "vbt_log_" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); a.remove();
 };
-
-// simulated set: lines in the same format the puck sends, including the bar path
-let demoN = 0;
-$("btnDemo").onclick = () => {
-  demoN++; setOffset++; sel = null;
-  const base = 0.62 + Math.random() * 0.1, depth = lift === "Bench" ? 420 : lift === "Deadlift" ? 560 : 600;
-  let i = 0;
-  const tick = () => {
-    if (i >= 6) return;
-    const mv = Math.max(0.15, base * (1 - 0.055 * i) + (Math.random() - .5) * 0.03);
-    handleLine(`S${900 + demoN} R${i + 1} MV ${mv.toFixed(2)} PV ${(mv * 1.45).toFixed(2)} ROM ${(depth / 1000 + Math.random() * .02).toFixed(2)} T ${(depth / 1000 / mv).toFixed(2)} VL 0% DX 0`, true);
-    const pts = [], fwd = 25 + i * 6, N = 40;
-    for (let k = 0; k < N; k++) {
-      const u = k / (N - 1);
-      const y = lift === "Deadlift" ? depth * (0.5 - 0.5 * Math.cos(Math.PI * u)) : -depth * Math.sin(Math.PI * u);
-      const x = lift === "Bench" ? 70 * Math.sin(Math.PI * Math.min(1, u * 1.6)) * (u < 0.5 ? 1 : 0.6 + 0.4 * Math.cos(Math.PI * (u - .5))) - 30 * u
-              : lift === "Deadlift" ? -fwd * Math.sin(Math.PI * u) * 0.6
-              : fwd * Math.sin(Math.PI * u) * (u < .5 ? 0.7 : 1);
-      pts.push(`${Math.round(x + (Math.random() - .5) * 4)},${Math.round(y)}`);
-    }
-    for (let L = 0; L < 4; L++) handleLine(`P ${L + 1}/4 ` + pts.slice(L * 10, L * 10 + 10).join(" "), true);
-    i++; setTimeout(tick, 650);
-  };
-  tick();
+// program tab
+$("plist").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.use) { activePid = b.dataset.use; wk = 0; dy = 0; bWeek = 0; bDraft = null; pickNext(); }
+  if (b.dataset.ren) { const p = programs.find(x => x.id === b.dataset.ren); const row = b.closest(".pitem"); row.querySelector("b").outerHTML = `<input class="inp" id="renIn" value="${esc(p.name)}">`; const i = $("renIn"); i.focus(); i.onchange = i.onblur = () => { p.name = i.value.trim() || p.name; save(); render(false); }; return; }
+  if (b.dataset.delp) { if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Delete?"; b.style.color = "var(--warn)"; return; } programs = programs.filter(x => x.id !== b.dataset.delp); if (activePid === b.dataset.delp) activePid = programs[0] ? programs[0].id : null; wk = dy = bWeek = 0; bDraft = null; pickNext(); }
+  save(); render(false);
 };
-window.addEventListener("resize", () => render(false));
+$("btnNewProg").onclick = () => { const p = { id: "p" + Date.now(), name: "New program", maxes: { ...(prog() ? prog().maxes : { Squat: 0, Bench: 0, Deadlift: 0 }) }, weeks: [{ name: "Week 1", days: [{ title: "Squat & Bench", notes: "", accessories: [], exercises: [] }] }] }; programs.push(p); activePid = p.id; wk = dy = bWeek = 0; bDraft = null; pickNext(); save(); render(false); $("builder").scrollIntoView({ block: "start" }); };
+[["maxS", "Squat"], ["maxB", "Bench"], ["maxD", "Deadlift"]].forEach(([id, k]) => $(id).addEventListener("change", e => { const p = prog(); if (p) { p.maxes[k] = +e.target.value || 0; save(); render(false); } }));
+$("btnImport").onclick = () => doImport($("importText").value);
+$("importFile").onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => doImport(String(r.result)); r.readAsText(f); e.target.value = ""; };
+$("bWeek").onchange = e => { bWeek = +e.target.value; bDraft = null; renderBuilder(); };
+$("bWeekName").oninput = e => { if (bDraft) bDraft.name = e.target.value; };
+$("bDays").oninput = e => {
+  const t = e.target, D = bDraft.days;
+  if (t.dataset.dt != null) D[+t.dataset.dt].title = t.value;
+  if (t.dataset.en) { const [i, j] = t.dataset.en.split(",").map(Number); D[i].ex[j].name = t.value; }
+  if (t.dataset.et) { const [i, j] = t.dataset.et.split(",").map(Number); D[i].ex[j].txt = t.value; }
+};
+$("bDays").onclick = e => {
+  const b = e.target.closest("button"); if (!b) return; const D = bDraft.days;
+  if (b.dataset.ea != null) D[+b.dataset.ea].ex.push({ name: "", txt: "", unit: "kg" });
+  if (b.dataset.ed) { const [i, j] = b.dataset.ed.split(",").map(Number); D[i].ex.splice(j, 1); }
+  if (b.dataset.dd != null) D.splice(+b.dataset.dd, 1);
+  renderBuilder();
+};
+$("bAddDay").onclick = () => { bDraft.days.push({ title: "", notes: "", accessories: [], ex: [{ name: "", txt: "", unit: "kg" }] }); renderBuilder(); };
+$("bSave").onclick = saveBuilder;
+$("bAddWeek").onclick = () => { const p = prog(); p.weeks.push({ name: `Week ${p.weeks.length + 1}`, days: [{ title: "", notes: "", accessories: [], exercises: [] }] }); bWeek = p.weeks.length - 1; bDraft = null; save(); render(false); };
+$("bCopyWeek").onclick = () => { const p = prog(); const c = JSON.parse(JSON.stringify(p.weeks[bWeek])); c.name = `Week ${p.weeks.length + 1}`; p.weeks.push(c); bWeek = p.weeks.length - 1; bDraft = null; save(); render(false); msg(`Copied into ${c.name}. Change the loads and save.`, "good"); };
+$("bDelWeek").onclick = e => { const b = e.target; if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; return; } const p = prog(); if (p.weeks.length > 1) { p.weeks.splice(bWeek, 1); bWeek = wk = 0; dy = 0; } b.dataset.armed = ""; b.textContent = "Delete week"; bDraft = null; pickNext(); save(); render(false); };
+window.addEventListener("resize", () => renderLive());
+$("btnLink").onclick = () => {
+  const url = $("syncUrl").value.trim(), key = $("syncKey").value.trim();
+  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url)) { msg("That doesn't look like an Apps Script web app link. It starts with https://script.google.com/macros/s/ and ends in /exec.", true); return; }
+  if (!key) { msg("Paste the key from the top of the script (the line that starts with const KEY).", true); return; }
+  sync.url = url; sync.key = key; save(); pullProgram(true);
+};
+$("btnRefresh").onclick = () => { pullProgram(false).then(flushQueue); };
+$("btnUnlink").onclick = () => { sync = { url: "", key: "", write: true, last: null }; queue = []; save(); render(false); msg("Unlinked. The last loaded program stays in the app."); };
+$("syncWrite").onchange = e => { sync.write = e.target.checked; save(); };
+window.addEventListener("online", () => flushQueue());
+$("btnHr").onclick = () => { if (hr.dev && hr.dev.gatt.connected) { const d = hr.dev; hr.dev = null; d.gatt.disconnect(); hr.now = null; $("btnHr").textContent = "Connect WHOOP"; $("hrPill").hidden = true; render(false); } else connectHr(); };
+$("restGo").onclick = () => { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} startRest(); };
+$("restStop").onclick = stopRest;
+["restHr", "restMin"].forEach(id => $(id).addEventListener("change", () => { restCfg.hr = +$("restHr").value || 110; restCfg.min = +$("restMin").value || 0; save(); restUpdate(); drawHr(); }));
+$("restBeep").onchange = e => { restCfg.beep = e.target.checked; save(); };
+$("wRefresh").onclick = () => pullWhoop(true);
+$("wSave").onclick = () => {
+  const url = $("wUrl").value.trim(), key = $("wKey").value.trim();
+  if (!/^https:\/\/script\.google(usercontent)?\.com\//.test(url) || !key) { msg("Paste the WHOOP bridge web app link (ends in /exec) and its key.", true); return; }
+  whoop.url = url; whoop.key = key; save();
+  const login = url + "?key=" + encodeURIComponent(key) + "&action=login";
+  const a = $("wLogin"); a.href = login; a.hidden = false;
+  const w = window.open(login, "_blank");
+  msg(w ? "Sign in to WHOOP in the new tab, then come back and tap Refresh." : "Tap “Open WHOOP sign-in”, sign in, then come back and tap Refresh.");
+  render(false);
+};
+$("wUnlink").onclick = () => { whoop = { url: "", key: "", data: null, at: null }; save(); render(false); };
+document.addEventListener("click", () => { try { if (audio && audio.state === "suspended") audio.resume(); else if (!audio) { audio = new (window.AudioContext || window.webkitAudioContext)(); } } catch (e) {} }, { once: true });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && sync.url && !active && Date.now() - lastPull > 60000) pullProgram(false).then(flushQueue); });
 
-load(); render(false);
-if (!navigator.bluetooth) msg("Bluetooth isn't available in this browser. On iPhone open this page in the Bluefy browser; on a computer or Android use Chrome or Edge. Simulate a set works anywhere.");
+load();
+if (!prog() || !week()) { wk = 0; dy = 0; }
+pickNext(); render(false);
+if (sync.url) pullProgram(false).then(flushQueue);
+if (whoop.url && (!whoop.at || Date.now() - new Date(whoop.at) > 3 * 3600000)) pullWhoop(false);
+if (!navigator.bluetooth) msg("Bluetooth isn't available in this browser. On iPhone open the app in Bluefy; on a computer or Android use Chrome or Edge. You can still browse your program and use Simulate.");
 </script>
 </body>
 </html>
