@@ -601,22 +601,23 @@ function startSet() {
             date: new Date().toISOString(), demo: false, done: false, test, reps: [] };
     if (test) testLog("Set started");
   }
-  log.push(set); active = set; sel = null; msg(""); graceSet = null;
+  log.push(set); active = set; sel = null; graceSet = null;
+  msg(device && device.gatt && device.gatt.connected ? "" : "The puck isn't connected right now. Lift anyway: it saves the reps and they'll be added to this set when it reconnects.", !(device && device.gatt && device.gatt.connected));
   // minimum rep height for this lift, then the puck forgets the racking / plate-change / walk-out movement
   sendCmd("ROM " + romFor(set.lift)).then(() => sendCmd("ARM"));
   if (hr.now) { set.hrStart = hr.now; set.hrPeak = hr.now; }
   stopRest(); save(); render(false);
 }
-let graceSet = null, graceUntil = 0;   // reps arriving just after End set still belong to that set
+let graceSet = null, graceUntil = 0, ghostSets = [];   // ghostSets: recently ended sets that got no reps (offline reps may belong to them)   // reps arriving just after End set still belong to that set
 function endSet(auto) {
-  const set = active; active = null; lastSetEnd = Date.now();
+  const set = active; active = null; lastSetEnd = Date.now(); if (set) set.endedAt = new Date().toISOString();
   // The puck may still be finishing the last reps (it reports a set without pauses once the bar is
   // racked), so reps arriving in the next 8 s still belong to this set, even if it has none yet.
   if (set && !auto) { graceSet = set; graceUntil = Date.now() + 8000; } else graceSet = null;
   if (set && set.test) testLog(`Set ended: ${set.reps.length} reps` + (set.reps.length ? "" : " so far (reps the puck is still sending will be added)"));
   if (set) {
     if (!set.reps.length) {
-      setTimeout(() => { if (!set.reps.length && log.includes(set) && active !== set) { log.splice(log.indexOf(set), 1); save(); render(false); } }, 8500);
+      setTimeout(() => { if (!set.reps.length && log.includes(set) && active !== set) { log.splice(log.indexOf(set), 1); ghostSets = [set, ...ghostSets].slice(0, 5); save(); render(false); } }, 8500);
     }
     else {
       set.done = true;
@@ -692,21 +693,37 @@ function tapUndo() {
 function importOffline() {
   const o = offline; offline = null;
   if (!o || !o.lines.length) { sendCmd("TIME " + Math.floor(Date.now() / 1000)); return; }
-  const groups = new Map();
+  const groups = new Map(), touched = new Set();
+  // the set you had running (or had just ended) when the rep happened
+  const owner = when => [...log, ...ghostSets].find(s => !s.offline && s.date && Date.parse(s.date) - 5000 <= when &&
+      when <= (s.endedAt ? Date.parse(s.endedAt) + 10000 : (s === active ? Date.now() : Date.parse(s.date) + 600000)));
   o.lines.forEach(({ ts, line }) => {
     const m = line.match(/^S(\d+)\s+R(\d+)\s+MV\s+([-\d.]+)\s+PV\s+([-\d.]+)\s+ROM\s+([-\d.]+)\s+T\s+([-\d.]+)/); if (!m) return;
     const when = o.base - (o.now - ts) * 1000, key = m[1] + ":" + Math.floor(when / 3600000);
+    const own = owner(when);
+    if (own) {
+      if (!log.includes(own)) { log.push(own); ghostSets = ghostSets.filter(g => g !== own); }
+      own.reps.push({ r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), offline: true,
+        at: new Date(when).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
+      touched.add(own); return;
+    }
     if (!groups.has(key)) groups.set(key, { id: Math.round(when) + groups.size, lift: "Squat", name: "Offline set", label: "", load: 0, plan: null, target: 0, offline: true,
       date: new Date(when).toISOString(), demo: false, done: true, reps: [] });
     groups.get(key).reps.push({ r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line),
       at: new Date(when).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
   });
   let n = 0; groups.forEach(g => { recalc(g); log.push(g); n += g.reps.length; });
+  let into = 0;
+  touched.forEach(set => { recalc(set); into += set.reps.filter(r => r.offline).length;
+    if (set !== active && !set.done) { set.done = true; if (set.plan) pickNext({ e: set.plan.e, s: set.plan.s }); }
+    if (set.plan) queueVel(set); });
+  n += into;
   if (n) testMark("offline");
   log.sort((a, b) => a.date < b.date ? -1 : 1);
   save(); render(false);
   sendCmd("CLEAR").then(() => sendCmd("TIME " + Math.floor(Date.now() / 1000)));
-  msg(`Imported ${n} rep${n === 1 ? "" : "s"} the puck saved while your phone wasn't connected. They're in History as "Offline set".`, "good");
+  msg(`Imported ${n} rep${n === 1 ? "" : "s"} the puck saved while your phone wasn't connected.` + (into ? ` ${into} went into the set you were doing at the time.` : "") + (n > into ? ` The rest are in History as "Offline set".` : ""), "good");
+  testLog(`Imported ${n} saved rep${n === 1 ? "" : "s"}` + (into ? ` (${into} into your set)` : ""));
 }
 
 function handleLine(line, demo = false) {
@@ -715,7 +732,7 @@ function handleLine(line, demo = false) {
   let m;
   if (/^TAP 2/.test(line)) { tapStart(); return; }
   if (/^TAP 3/.test(line)) { tapUndo(); return; }
-  if (/^SLEEP/.test(line)) { testLog("Puck went to sleep"); setConn("Puck asleep · tap it to wake", false); return; }
+  if (/^SLEEP/.test(line)) { puckAsleep = true; testLog("Puck went to sleep (no movement for a while). Move the bar to wake it; the app reconnects by itself."); setConn("Puck asleep · move the bar to wake it", false); return; }
   if (/^CLEARED/.test(line)) return;
   m = line.match(/^SKIP (\w+) ROM ([\d.]+) MV ([\d.]+) SIDE ([\d.]+) MIN ([\d.]+)/);
   if (m) {
@@ -1443,12 +1460,20 @@ async function openGatt() {
   renderPuck();
 }
 function setConn(t, on) { const c = $("conn"); c.textContent = t; c.className = "pill" + (on ? " on" : ""); }
+let puckAsleep = false;
 async function onDisconnect() {
-  cmdChar = null; $("btnConnect").textContent = "Connect puck";
-  for (let i = 0; i < 5 && device && !device.gatt.connected; i++) { setConn("Reconnecting…", false); try { await new Promise(r => setTimeout(r, 1500)); await openGatt(); return; } catch (e) {} }
-  setConn("Not connected", false);
+  cmdChar = null; $("btnConnect").textContent = "Disconnect";
+  if (active) msg("The puck disconnected during the set. Keep lifting: it saves the reps and they'll be added here when it reconnects.", true);
+  // keep trying until the puck is back (it may be asleep until the bar moves) or you tap Disconnect
+  const d = device;
+  while (device === d && d && !d.gatt.connected) {
+    setConn(puckAsleep ? "Puck asleep · move the bar to wake it" : "Reconnecting…", false);
+    try { await new Promise(r => setTimeout(r, 3000)); if (device !== d) return; await openGatt(); puckAsleep = false; testLog("Puck reconnected"); return; } catch (e) {}
+  }
+  if (!device) { setConn("Not connected", false); $("btnConnect").textContent = "Connect puck"; }
 }
-$("btnConnect").onclick = () => { if (device && device.gatt.connected) { const d = device; device = null; d.gatt.disconnect(); setConn("Not connected", false); $("btnConnect").textContent = "Connect puck"; } else connect(); };
+$("btnConnect").onclick = () => { if (device && !device.gatt.connected) { device = null; setConn("Not connected", false); $("btnConnect").textContent = "Connect puck"; return; }   // stop reconnecting
+  if (device && device.gatt.connected) { const d = device; device = null; d.gatt.disconnect(); setConn("Not connected", false); $("btnConnect").textContent = "Connect puck"; } else connect(); };
 
 // ---------------- simulate (same line format as the puck)
 function simulate() {
