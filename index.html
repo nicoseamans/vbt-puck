@@ -607,10 +607,14 @@ function startSet() {
 let graceSet = null, graceUntil = 0;   // reps arriving just after End set still belong to that set
 function endSet(auto) {
   const set = active; active = null; lastSetEnd = Date.now();
-  if (set && set.reps.length && !auto) { graceSet = set; graceUntil = Date.now() + 5000; } else graceSet = null;
-  if (set && set.test) testLog(`Set ended: ${set.reps.length} reps`);
+  // The puck may still be finishing the last reps (it reports a set without pauses once the bar is
+  // racked), so reps arriving in the next 8 s still belong to this set, even if it has none yet.
+  if (set && !auto) { graceSet = set; graceUntil = Date.now() + 8000; } else graceSet = null;
+  if (set && set.test) testLog(`Set ended: ${set.reps.length} reps` + (set.reps.length ? "" : " so far (reps the puck is still sending will be added)"));
   if (set) {
-    if (!set.reps.length) log.splice(log.indexOf(set), 1);
+    if (!set.reps.length) {
+      setTimeout(() => { if (!set.reps.length && log.includes(set) && active !== set) { log.splice(log.indexOf(set), 1); save(); render(false); } }, 8500);
+    }
     else {
       set.done = true;
       startRest();
@@ -752,7 +756,13 @@ function handleLine(line, demo = false) {
   recalc(set); lastRepSet = set; set.lastRepAt = Date.now();
   { const r = set.reps[set.reps.length - 1]; testMark("rep"); if (r.tut != null) testMark("phases"); if (r.tilt != null) testMark("tilt");
     testLog(`Rep ${r.r}: ${r.mv.toFixed(2)} m/s${r.tut != null ? ` · down ${r.ecc.toFixed(1)} s, pause ${r.pause.toFixed(1)} s` : ""}${r.tilt != null ? ` · tilt ${Math.abs(r.tilt).toFixed(1)}°` : ""}`); }
-  if (late) { recalc(set); if (set.plan) queueVel(set); save(); render(false); msg(`Rep ${set.reps.length} arrived just after you ended the set, so it was added to that set.`, "good"); }
+  if (late) {
+    recalc(set);
+    if (!set.done) { set.done = true; startRest(); if (set.plan) pickNext({ e: set.plan.e, s: set.plan.s }); }
+    if (set.plan) queueVel(set);
+    if (set.test) testLog(`Rep ${set.reps.length} added to the set you just ended`);
+    save(); render(false); msg(`Rep ${set.reps.length} arrived just after you ended the set, so it was added to that set.`, "good");
+  }
   else if (set.target && set.reps.length >= set.target) endSet(true); else { save(); render(true); }
   const lb = $("liveBox"); lb.classList.remove("flash"); void lb.offsetWidth; lb.classList.add("flash");
 }
@@ -1201,6 +1211,7 @@ function queueVel(set) {
   const w = p.weeks.find(x => x.name === set.plan.wn) || p.weeks[set.plan.w], ex = w && w.days[set.plan.d] && w.days[set.plan.d].exercises[set.plan.e];
   if (!w || !ex) return;
   const mvs = set.reps.map(r => r.mv);
+  queue = queue.filter(q => !(q.vel != null && q.tab === (w.tab || w.name) && q.d === set.plan.d && q.e === set.plan.e && q.s === set.plan.s));   // newest numbers replace older ones
   queue.push({ tab: w.tab || w.name, d: set.plan.d, e: set.plan.e, s: set.plan.s, name: ex.name, vel: +avg(mvs).toFixed(2), load: set.load || null,
                note: `VBT puck · ${new Date(set.date).toLocaleDateString()} · ${kg(set.load)} kg\nReps (m/s): ${mvs.map(v => v.toFixed(2)).join(", ")}\nBest ${Math.max(...mvs).toFixed(2)} · loss ${Math.max(...set.reps.map(r => r.vl))} %` });
   const sv = ex.sets[set.plan.s]; if (sv) { sv.vel = avg(mvs).toFixed(2); if (set.load) sv.load = set.load; }
