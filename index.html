@@ -192,6 +192,168 @@ pre { max-height: 150px; overflow: auto; font: 11.5px/1.5 var(--mono); color: va
 @media (max-width: 560px) { .dockinfo { flex-basis: 100%; } td, th { padding-left: 5px; padding-right: 5px; } }
 @media (max-width: 720px) { .live, .charts { grid-template-columns: 1fr; } .brow { grid-template-columns: minmax(0, 1fr) auto; } .brow .presc { grid-column: 1 / 2; } }
 @media (prefers-reduced-motion: no-preference) { .flash { animation: flash .7s ease-out; } @keyframes flash { from { background: color-mix(in srgb, var(--z-mid) 26%, var(--panel)); } } }
+
+/* ── Visual refresh: layout, depth and spacing from the redesign, colours from our own tokens (light + dark) ── */
+html { scroll-behavior: smooth; }
+body {
+  background:
+    radial-gradient(ellipse at 12% -10%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 34rem),
+    var(--bg);
+  letter-spacing: .005em;
+}
+header {
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(18px);
+  border-bottom-color: var(--line);
+}
+.bar { padding-block: 14px 10px; gap: 9px; }
+h1 { font-size: 29px; letter-spacing: .045em; }
+h1 span { color: var(--accent); }
+h2 { color: var(--muted); font-size: 13px; letter-spacing: .16em; }
+h3 { font-size: 19px; }
+.tabs { gap: 6px; padding-bottom: 11px; }
+.tabs button {
+  padding: 9px 16px; border-radius: 9px;
+  font-size: 14px; letter-spacing: .1em; transition: .18s ease;
+}
+.tabs button[aria-selected="true"] {
+  color: var(--bg); background: var(--ink);
+  box-shadow: 0 4px 16px rgb(0 0 0 / .14);
+}
+button, select, input, textarea { font-size: 14px; }
+button {
+  border: 1px solid var(--line); background: var(--soft);
+  border-radius: 10px; padding: 9px 14px; transition: border-color .18s, background .18s, transform .18s;
+}
+button:hover { border-color: var(--muted); transform: translateY(-1px); }
+button:active { transform: translateY(0); }
+button.primary {
+  background: var(--ink); color: var(--bg); border-color: var(--ink);
+  font-weight: 700;
+}
+.pill {
+  background: var(--soft); border-color: var(--line);
+  color: var(--muted); padding: 6px 11px; font-size: 11px;
+}
+.pill.on { background: color-mix(in srgb, var(--ok) 12%, var(--panel)); }
+.panel {
+  background: linear-gradient(145deg, color-mix(in srgb, var(--panel) 96%, white 4%), var(--panel));
+  border: 1px solid var(--line); border-radius: 16px; padding: 19px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / .12);
+  gap: 15px;
+}
+.wrap { gap: 16px; padding-block: 18px 132px; }
+.head { gap: 10px; }
+.chips { background: var(--soft); padding: 4px; border: 1px solid var(--line); border-radius: 11px; }
+.chips button { padding: 8px 13px; }
+.chips button[aria-pressed="true"] {
+  background: var(--ink); color: var(--bg); box-shadow: none; font-weight: 700;
+}
+.field { color: var(--muted); }
+.field input, .field select, .inp, textarea {
+  background: var(--soft); border: 1px solid var(--line); color: var(--ink);
+  border-radius: 9px;
+}
+.field input:focus, .field select:focus, .inp:focus, textarea:focus {
+  border-color: var(--ink); outline: 2px solid color-mix(in srgb, var(--ink) 15%, transparent);
+}
+.note { color: var(--muted); line-height: 1.55; }
+.msg { background: var(--soft); border-radius: 10px; }
+.ex { border-top-color: var(--line); padding-top: 13px; }
+.exhead { gap: 7px 12px; }
+.tablewrap { border: 1px solid var(--line); border-radius: 11px; }
+table { overflow: hidden; }
+th { background: var(--soft); color: var(--muted); padding: 9px 8px; }
+td { padding: 10px 8px; border-top-color: var(--line); }
+tr.plan:hover td { background: var(--soft); }
+tr.next td { background: var(--hl); }
+tr.next td:first-child { box-shadow: inset 3px 0 0 var(--z-mid); }
+tr.rec td { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); }
+.daycard {
+  background: linear-gradient(145deg, var(--panel), color-mix(in srgb, var(--panel) 88%, var(--soft)));
+  border-color: var(--line); border-radius: 15px; padding: 16px;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.daycard:hover { border-color: var(--muted); transform: translateY(-2px); }
+.daycard.upnext {
+  border-color: var(--z-mid);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--z-mid) 35%, transparent), 0 8px 24px rgb(0 0 0 / .12);
+}
+.daycard .daynum { color: var(--accent); }
+.daycard b { font-size: 21px; }
+.prog { background: var(--soft); height: 7px; border-radius: 10px; }
+.prog i { background: var(--ok); border-radius: inherit; }
+.daynum { color: var(--accent); }
+.back { color: var(--muted); }
+.back:hover { color: var(--ink); }
+.live {
+  background: linear-gradient(120deg, var(--soft), transparent 75%);
+  border: 1px solid var(--line); border-radius: 14px; padding: 18px;
+}
+.num { font-size: clamp(72px, 17vw, 116px); letter-spacing: -.035em; }
+.unit { font-size: 20px; }
+.zone { letter-spacing: .14em; }
+.stat { border-top: 2px solid var(--line); padding-top: 8px; }
+.stat b { font-size: 29px; }
+.stat small { color: var(--muted); }
+.charts { gap: 16px; }
+.charts .panel { min-width: 0; }
+.legend { gap: 8px 13px; }
+.legend span { font-family: var(--mono); font-size: 11px; }
+.dock {
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  backdrop-filter: blur(18px);
+  border-top: 1px solid var(--line);
+  box-shadow: 0 -10px 32px rgb(0 0 0 / .22);
+}
+.dockin { padding-top: 12px; padding-bottom: 2px; gap: 10px; }
+.dockinfo b { font-size: 20px; }
+.dockinfo span { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
+.arm {
+  background: var(--ink); color: var(--bg); border-color: var(--ink);
+  font-weight: 800; padding: 12px 20px; border-radius: 11px;
+}
+.arm[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pitem, .bday {
+  background: color-mix(in srgb, var(--panel) 88%, var(--soft));
+  border-color: var(--line); border-radius: 12px;
+}
+.pitem.on { border-color: var(--ink); }
+textarea { padding: 12px; }
+details.set { border-top-color: var(--line); }
+details.set > summary { padding: 14px 4px; }
+details.set > summary:hover { color: var(--ink); }
+.sname { font-size: 18px; }
+tbody tr.rep:hover td, tbody tr.sel td { background: var(--soft); }
+.empty { color: var(--muted); }
+.tag { color: var(--z-mid); }
+.ring { filter: drop-shadow(0 5px 14px rgb(0 0 0 / .18)); }
+@media (min-width: 900px) {
+  .wrap { max-width: 1120px; }
+  .bar, .tabs, .dockin { max-width: 1120px; }
+  #tab-train #dayWrap { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .stat b { font-size: clamp(22px, 6.6vw, 29px); }
+  #phases { white-space: nowrap; font-size: clamp(17px, 5vw, 29px); }
+  .panel { padding: 15px; border-radius: 13px; }
+  .live { padding: 14px; }
+  .num { font-size: clamp(68px, 21vw, 100px); }
+  .dockin { gap: 8px; }
+  .arm { flex: 1 1 130px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .panel { animation: rise-in .32s ease both; }
+  @keyframes rise-in { from { opacity: .75; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+}
+
+
+@media (max-width: 480px) {
+  .tabs { gap: 3px; }
+  .tabs button { padding: 8px 10px; font-size: 13px; letter-spacing: .06em; }
+  h1 { font-size: 26px; }
+}
+
 </style>
 </head>
 <body>
@@ -606,13 +768,15 @@ function startSet() {
   // minimum rep height for this lift, then the puck forgets the racking / plate-change / walk-out movement
   // bench / squat reps start with a lowering, so the puck ignores the lift-off from the hooks
   const needEcc = (set.lift === "Bench" || set.lift === "Squat") && (set.plan || set.test) ? 1 : 0;
-  sendCmd("ROM " + romFor(set.lift)).then(() => sendCmd("ECC " + needEcc)).then(() => sendCmd("ARM"));
+  sendCmd("ROM " + romFor(set.lift)).then(() => sendCmd("ECC " + needEcc)).then(() => sendCmd("ARM"))
+    .then(() => { if (rawCfg && set.test) { set.raw = true; rawFile = null; return sendCmd("REC 1").then(ok => testLog(ok ? "Recording raw sensor data" : "Couldn't start the recording")); } });
   if (hr.now) { set.hrStart = hr.now; set.hrPeak = hr.now; }
   stopRest(); save(); render(false);
 }
 let graceSet = null, graceUntil = 0, ghostSets = [];   // ghostSets: recently ended sets that got no reps (offline reps may belong to them)   // reps arriving just after End set still belong to that set
 function endSet(auto) {
   const set = active; active = null; lastSetEnd = Date.now(); if (set) set.endedAt = new Date().toISOString();
+  if (set && set.raw) { rawSet = set; sendCmd("REC 0").then(() => sendCmd("RAW")); testLog("Recording stopped. Keep the bar still: the puck sends it in a few seconds"); }
   // The puck may still be finishing the last reps (it reports a set without pauses once the bar is
   // racked), so reps arriving in the next 8 s still belong to this set, even if it has none yet.
   if (set && !auto) { graceSet = set; graceUntil = Date.now() + 8000; } else graceSet = null;
@@ -649,6 +813,8 @@ const TEST_ITEMS = [
   ["tap3", "Triple-tap deletes the last rep", "Three quick knocks after a rep"],
   ["offline", "Offline reps imported", "Disconnect, do 2 reps, reconnect"]];
 let testOk = {};
+// raw recording (for tuning the puck against video): the puck keeps every sensor reading of one set
+let rawCfg = false, rawRx = null, rawFile = null, rawSet = null;   // rawRx: lines being received; rawFile: {name, text, n}
 const isLoose = () => view === "free" || view === "test";
 function testMark(k) { if (!testOk[k]) { testOk[k] = true; testLog("✓ " + TEST_ITEMS.find(x => x[0] === k)[1]); } }
 function testLog(t) {
@@ -662,6 +828,14 @@ function testPanel() {
     <div class="row" style="margin-top:6px"><span class="field">Figure for the bar path</span><div class="chips" id="testLift">${["Squat", "Bench", "Deadlift"].map(l => `<button data-tl="${l}" aria-pressed="${l === testLift}">${l}</button>`).join("")}</div></div>
     <div class="ex"><h3>Checklist</h3><div class="acc">${TEST_ITEMS.map(([k, name, hint]) => `<div><span>${testOk[k] ? '<span class="check">✓</span>' : '<span style="color:var(--muted)">○</span>'} ${esc(name)}</span><span>${testOk[k] ? "passed" : esc(hint)}</span></div>`).join("")}</div></div>
     <div class="row"><button data-tact="find">Find puck</button><button data-tact="sync">Get saved reps</button><button data-tact="clear">Clear test sets</button><button data-tact="reset">Reset checklist</button></div>
+    <div class="ex"><h3>Raw recording (for tuning)</h3>
+      <label class="toggles" style="font-size:14px"><input type="checkbox" data-tact="rawtoggle"${rawCfg ? " checked" : ""}> Record the puck's raw sensor data for the next set</label>
+      <p class="note">${rawRx ? `Receiving from the puck… ${rawRx.lines.length} of ${Math.ceil(rawRx.n / 6)} parts` :
+        rawFile ? `Ready: ${rawFile.n} readings (${(rawFile.n / 100).toFixed(0)} s). Save it and send it with the video of the set.` :
+        rawCfg ? "On: start a set, lift (film it), end the set, then keep the bar still for a few seconds while the puck sends it." :
+        "Switch on, then do a set while filming it from the side. Needs puck firmware v0.8.3."}</p>
+      ${rawFile ? '<div class="row"><button data-tact="rawsave">Save recording</button><button data-tact="rawcopy">Copy as text</button></div>' : ""}
+    </div>
     <div class="ex"><h3>Live events</h3><div class="acc" style="max-height:260px;overflow:auto">${testEvents.map(e => `<div><span>${esc(e.t)}</span><span>${e.at}</span></div>`).join("") || '<p class="note">Nothing yet. Connect the puck and try a double-tap.</p>'}</div></div>`;
 }
 
@@ -698,28 +872,37 @@ function importOffline() {
   const groups = new Map(), touched = new Set(); let dup = 0, into = 0;
   // the puck keeps a copy of every rep, so skip the ones the app already received live
   // (a saved copy is the exact same line, so every number matches exactly)
-  const seen = (when, mv, rom, t) => log.some(s => s.reps.some(r => r.ms && Math.abs(r.ms - when) < 4000 && Math.abs(r.mv - mv) < 0.004 && Math.abs(r.rom - rom) < 0.004 && Math.abs(r.t - t) < 0.004));
+  const seen = (when, mv, rom, t) => { for (const s of log) for (const r of s.reps) if (r.ms && Math.abs(r.ms - when) < 4000 && Math.abs(r.mv - mv) < 0.004 && Math.abs(r.rom - rom) < 0.004 && Math.abs(r.t - t) < 0.004) return r; return null; };
+  let prev = null, paths = 0;   // the rep the next saved bar path ("Q" line) belongs to
   // the set you had running (or had just ended) when the rep happened
   const owner = when => [...log, ...ghostSets].find(s => !s.offline && s.date && Date.parse(s.date) - 5000 <= when &&
       when <= (s.endedAt ? Date.parse(s.endedAt) + 10000 : (s === active ? Date.now() : Date.parse(s.date) + 600000)));
   o.lines.forEach(({ ts, line }) => {
-    const m = line.match(/^S(\d+)\s+R(\d+)\s+MV\s+([-\d.]+)\s+PV\s+([-\d.]+)\s+ROM\s+([-\d.]+)\s+T\s+([-\d.]+)/); if (!m) return;
+    if (/^Q /.test(line)) {                       // saved bar path for the rep just before it
+      if (prev && !(prev.path && prev.path.length > 1)) {
+        const pts = line.slice(2).trim().split(/\s+/).map(t => t.split(",").map(Number)).filter(q => q.length === 2 && q.every(isFinite));
+        if (pts.length > 1) { prev.path = pts; paths++; touched.add(log.find(s => s.reps.includes(prev)) || null); }
+      }
+      prev = null; return;
+    }
+    const m = line.match(/^S(\d+)\s+R(\d+)\s+MV\s+([-\d.]+)\s+PV\s+([-\d.]+)\s+ROM\s+([-\d.]+)\s+T\s+([-\d.]+)/); if (!m) { prev = null; return; }
     const when = o.base - (o.now - ts) * 1000, key = m[1] + ":" + Math.floor(when / 3600000);
-    if (seen(when, +m[3], +m[5], +m[6])) { dup++; return; }
+    { const had = seen(when, +m[3], +m[5], +m[6]); if (had) { dup++; prev = had; return; } }
     const own = owner(when);
     if (own) {
       if (!log.includes(own)) { log.push(own); ghostSets = ghostSets.filter(g => g !== own); }
       into++;
-      own.reps.push({ r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), offline: true, ms: when,
+      own.reps.push(prev = { r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), offline: true, ms: when,
         at: new Date(when).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
       touched.add(own); return;
     }
     if (!groups.has(key)) groups.set(key, { id: Math.round(when) + groups.size, lift: "Squat", name: "Offline set", label: "", load: 0, plan: null, target: 0, offline: true,
       date: new Date(when).toISOString(), demo: false, done: true, reps: [] });
-    groups.get(key).reps.push({ r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), ms: when,
+    groups.get(key).reps.push(prev = { r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), ms: when,
       at: new Date(when).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
   });
   let n = 0; groups.forEach(g => { recalc(g); log.push(g); n += g.reps.length; });
+  touched.delete(null);
   touched.forEach(set => { set.reps.sort((a, b) => (a.ms || 0) - (b.ms || 0)); recalc(set);
     if (set !== active && !set.done) { set.done = true; if (set.plan) pickNext({ e: set.plan.e, s: set.plan.s }); }
     if (set.plan) queueVel(set); });
@@ -728,6 +911,7 @@ function importOffline() {
   log.sort((a, b) => a.date < b.date ? -1 : 1);
   save(); render(false);
   sendCmd("CLEAR").then(() => sendCmd("TIME " + Math.floor(Date.now() / 1000)));
+  if (paths && !n) { testLog(`Added the bar path to ${paths} rep${paths === 1 ? "" : "s"}`); render(false); }
   if (n) {
     msg(`Added ${n} rep${n === 1 ? "" : "s"} the app missed (it was in the background or not connected).` + (into ? ` ${into} went into the set you were doing at the time.` : "") + (n > into ? ` The rest are in History as "Offline set".` : ""), "good");
     testLog(`Added ${n} saved rep${n === 1 ? "" : "s"}` + (into ? ` (${into} into your set)` : "") + (dup ? `, ${dup} already here` : ""));
@@ -742,6 +926,20 @@ function handleLine(line, demo = false) {
   if (/^TAP 3/.test(line)) { tapUndo(); return; }
   if (/^SLEEP/.test(line)) { puckAsleep = true; testLog("Puck went to sleep (no movement for a while). Move the bar to wake it; the app reconnects by itself."); setConn("Puck asleep · move the bar to wake it", false); return; }
   if (/^CLEARED/.test(line)) return;
+  m = line.match(/^RAW (\d+) (\d+) ([\d.]+) (\d) (\S+)/);
+  if (m) { rawRx = { n: +m[1], head: line, lines: [] }; testLog(`Receiving raw recording: ${m[1]} readings`); return; }
+  if (/^W \d+ /.test(line)) { if (rawRx) { rawRx.lines.push(line); if (rawRx.lines.length % 40 === 0) testLog(`Receiving… ${rawRx.lines.length} parts`); } return; }
+  if (/^RAW END/.test(line)) {
+    if (rawRx) {
+      const s = rawSet, when = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+      const reps = s ? s.reps.map(r => `# rep ${r.r}: MV ${r.mv} PV ${r.pv} ROM ${r.rom} T ${r.t}`).join("\n") : "";
+      const text = [`# VBT puck raw recording · ${new Date().toString()}`, `# lift ${s ? s.lift : "?"} · load ${s ? s.load : "?"} kg · reps the app got:`, reps, rawRx.head, ...rawRx.lines, "RAW END"].filter(Boolean).join("\n");
+      rawFile = { name: `puck_raw_${when}.txt`, text, n: rawRx.n }; rawRx = null; rawCfg = false;
+      testLog(`Raw recording ready (${rawFile.n} readings): tap Save recording`);
+      msg("Raw recording received. Tap Save recording in Test trial and send it with the video.", "good");
+    }
+    return;
+  }
   m = line.match(/^SKIP (\w+) ROM ([\d.]+) MV ([\d.]+) SIDE ([\d.]+) MIN ([\d.]+)/);
   if (m) {
     const cm = Math.round(+m[2] * 100), min = Math.round(+m[5] * 100);
@@ -757,7 +955,7 @@ function handleLine(line, demo = false) {
   m = line.match(/^SYNC (\d+) (-?\d+)/);
   if (m) { offline = { n: +m[1], now: +m[2], base: Date.now(), lines: [] }; return; }
   if (/^SYNC END/.test(line)) { importOffline(); return; }
-  m = line.match(/^O (-?\d+) (S.*)$/);
+  m = line.match(/^O (-?\d+) ([SQ].*)$/);
   if (m) { if (offline) offline.lines.push({ ts: +m[1], line: m[2] }); return; }
   m = line.match(/^BAT\s+([\d.]+)V\s+(\d+)%/);
   if (m) { testMark("bat"); const b = $("bat"); b.textContent = `Battery ${m[2]}%`; b.title = `${(+m[1]).toFixed(2)} V`; b.className = "pill" + (+m[2] > 20 ? " on" : ""); return; }
@@ -1526,7 +1724,21 @@ $("dayView").addEventListener("click", e => {
   if (k === "sync") sendCmd("SYNC").then(ok => testLog(ok ? "Asked the puck for saved reps" : "Not connected"));
   if (k === "clear") { log = log.filter(s => !s.test || s === active); save(); testLog("Test sets cleared"); render(false); }
   if (k === "reset") { testOk = {}; testEvents = []; render(false); }
+  if (k === "rawtoggle") { rawCfg = a.checked; testLog(rawCfg ? "Raw recording on for the next set" : "Raw recording off"); render(false); }
+  if (k === "rawsave") saveRaw();
+  if (k === "rawcopy") navigator.clipboard.writeText(rawFile.text).then(() => msg("Recording copied. Paste it into a note or message.", "good"), () => msg("Couldn't copy on this browser.", true));
 });
+async function saveRaw() {
+  if (!rawFile) return;
+  const file = new File([rawFile.text], rawFile.name, { type: "text/plain" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: rawFile.name }); return; }
+  } catch (e) { if (e.name === "AbortError") return; }
+  const url = URL.createObjectURL(file), link = document.createElement("a");
+  link.href = url; link.download = rawFile.name; document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  msg("If nothing was saved, use Copy as text instead.");
+}
 $("btnFree").onclick = () => { view = "free"; next = null; render(false); window.scrollTo(0, 0); };
 $("dayChips").onclick = e => { const b = e.target.closest("button"); if (!b || active) return; dy = +b.dataset.d; view = "day"; pickNext(); save(); render(false); };
 $("dayView").onclick = e => {
