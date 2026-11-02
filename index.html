@@ -287,8 +287,9 @@ pre { max-height: 150px; overflow: auto; font: 11.5px/1.5 var(--mono); color: va
       <div class="toggles" style="font-size:14px">
         <label for="tapsOn"><input type="checkbox" id="tapsOn" checked> Double-tap the puck to start / end a set · triple-tap deletes the last rep</label>
       </div>
-      <div class="row" style="margin-top:8px"><label class="field" for="minRom">Minimum rep height <select id="minRom"><option value="10">10 cm</option><option value="15">15 cm</option><option value="20">20 cm</option><option value="25">25 cm</option><option value="30">30 cm</option></select></label></div>
-      <p class="note">Lifts shorter than this aren't counted as reps. 20 cm suits squat, bench and deadlift. Use 10–15 cm when testing by hand or for short lifts like rack pulls or board presses. If a real rep is missed, the app tells you why.</p>
+      <div class="row" style="margin-top:8px"><label class="field" for="minRom">Minimum rep height: squat, deadlift and others <select id="minRom"><option value="10">10 cm</option><option value="15">15 cm</option><option value="20">20 cm</option><option value="25">25 cm</option><option value="30">30 cm</option></select></label>
+        <label class="field" for="minRomBench">Bench <select id="minRomBench"><option value="10">10 cm</option><option value="15">15 cm</option><option value="20">20 cm</option><option value="25">25 cm</option><option value="30">30 cm</option></select></label></div>
+      <p class="note">Lifts shorter than this aren't counted as reps. The app sets the right one on the puck every time a set starts. A short bench stroke (big arch, long arms) needs 15 cm; 20 cm suits squat and deadlift and ignores unracking and bumps. Use 10 cm when testing by hand. If a real rep is missed, the app tells you why.</p>
       <p class="note">The puck's LED and buzzer (if fitted) use the same velocity-loss cut-off as the app (set on the Train screen). Reps lifted while your phone isn't connected are saved on the puck and imported the next time you connect. After 10 minutes still, the puck sleeps; tap it or move the bar to wake it.</p>
       <div class="row"><button id="pkSync">Get saved reps</button><button id="pkFind">Find puck (flash + buzz)</button><button id="pkSleep">Put puck to sleep</button></div>
     </section>
@@ -429,7 +430,8 @@ let sel = null;             // {id, r} rep picked in history
 let pendingPath = null, ignoreP = false, lastRepSet = null;
 let device = null, tab = "train", view = "home", homeWeek = null;
 let sync = { url: "", key: "", write: true, last: null }, queue = [], syncBusy = false, lastPull = 0;
-let puckCfg = { taps: true, rom: 20 };
+let puckCfg = { taps: true, rom: 20, romBench: 15 };
+const romFor = lift => lift === "Bench" ? (puckCfg.romBench || 15) : (puckCfg.rom || 20);
 let whoop = { url: "", key: "", data: null, at: null }, restCfg = { hr: 110, min: 180, beep: true };
 let hr = { dev: null, now: null, hist: [] }, rest = { start: null, readyAt: null }, restTick = null, audio = null;
 
@@ -600,7 +602,8 @@ function startSet() {
     if (test) testLog("Set started");
   }
   log.push(set); active = set; sel = null; msg(""); graceSet = null;
-  sendCmd("ARM");   // puck forgets the racking / plate-change / walk-out movement before this set
+  // minimum rep height for this lift, then the puck forgets the racking / plate-change / walk-out movement
+  sendCmd("ROM " + romFor(set.lift)).then(() => sendCmd("ARM"));
   if (hr.now) { set.hrStart = hr.now; set.hrPeak = hr.now; }
   stopRest(); save(); render(false);
 }
@@ -1246,6 +1249,7 @@ async function flushQueue() {
 function renderPuck() {
   $("tapsOn").checked = puckCfg.taps !== false;
   $("minRom").value = String(puckCfg.rom || 20);
+  $("minRomBench").value = String(puckCfg.romBench || 15);
   const on = !!(device && device.gatt && device.gatt.connected);
   $("puckInfo").textContent = !on ? "Connect the puck to change these" : cmdChar ? "Connected" : "Connected · update the puck to firmware v0.7 for these";
   ["pkSync", "pkFind", "pkSleep"].forEach(id => $(id).disabled = !(on && cmdChar));
@@ -1560,7 +1564,8 @@ $("syncWrite").onchange = e => { sync.write = e.target.checked; save(); };
 window.addEventListener("online", () => flushQueue());
 $("tiltSwap").onclick = () => { puckCfg.tiltFlip = !puckCfg.tiltFlip; save(); renderLive(); };
 $("tapsOn").onchange = e => { puckCfg.taps = e.target.checked; save(); sendCmd("TAPS " + (puckCfg.taps ? 1 : 0)); };
-$("minRom").onchange = e => { puckCfg.rom = +e.target.value; save(); sendCmd("ROM " + puckCfg.rom); msg(`Reps now need at least ${puckCfg.rom} cm of bar travel.`, "good"); };
+$("minRom").onchange = e => { puckCfg.rom = +e.target.value; save(); sendCmd("ROM " + (active ? romFor(active.lift) : puckCfg.rom)); msg(`Squat, deadlift and other reps now need at least ${puckCfg.rom} cm of bar travel.`, "good"); };
+$("minRomBench").onchange = e => { puckCfg.romBench = +e.target.value; save(); if (active) sendCmd("ROM " + romFor(active.lift)); msg(`Bench reps now need at least ${puckCfg.romBench} cm of bar travel.`, "good"); };
 $("pkSync").onclick = () => sendCmd("SYNC");
 $("pkFind").onclick = () => sendCmd("LED");
 $("pkSleep").onclick = () => sendCmd("SLEEP");
