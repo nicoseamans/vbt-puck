@@ -426,6 +426,56 @@ details.tfold[open] { display: grid; gap: 10px; }
 .tdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .dockinfo span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dock, .dockin { min-width: 0; max-width: 100%; }
+
+/* ---- rep details: tiles + legends ---- */
+.subhead { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.subhead b { font-size: 14px; }
+.subhead span { font-size: 12px; color: var(--muted); }
+.mstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.mstats.m3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mstats:empty { display: none; }
+.mstats > div { border: 1px solid var(--line); border-radius: 12px; padding: 9px 10px; display: grid; gap: 2px; min-width: 0; }
+.mstats small { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mstats b { font: 700 20px/1.1 var(--display); }
+.mstats span { font-size: 11.5px; color: var(--muted); }
+@media (max-width: 420px) { .mstats:not(.m3) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vd { font-style: normal; font-weight: 700; }
+.vd.ok { color: var(--ok); } .vd.mid { color: var(--z-mid); } .vd.warn { color: var(--warn); }
+.plegend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink); align-items: center; }
+.plegend:empty { display: none; }
+.plegend .m { color: var(--muted); margin-left: auto; }
+.lg { display: inline-block; width: 18px; height: 0; vertical-align: middle; margin-right: 6px; border-top: 3px solid var(--c, var(--ink)); }
+.lg.dash { border-top-style: dashed; border-top-width: 2.5px; }
+.lg.dot { width: 9px; height: 9px; border: 0; border-radius: 50%; background: var(--ink); }
+.tnote { font-size: 12px; }
+#rdPath, #rdTilt { display: grid; gap: 10px; }
+#rdPath[hidden], #rdTilt[hidden] { display: none; }
+.mstats > div { padding: 8px 9px; }
+@media (max-width: 420px) { .mstats:not(.m3) { grid-template-columns: repeat(4, minmax(0, 1fr)); } .mstats b { font-size: 18px; } .mstats span { font-size: 11px; } }
+
+/* ---- program editor ---- */
+.edbtn { padding: 6px 12px; }
+.ed { display: grid; gap: 12px; }
+.edtop { display: flex; gap: 10px; align-items: end; }
+.edtop .field { display: grid; gap: 4px; }
+.edundo { white-space: nowrap; }
+.edex { border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: grid; gap: 8px; background: var(--panel); }
+.edexh { display: flex; gap: 6px; align-items: center; }
+.ednum { font: 800 20px var(--display); color: var(--accent); width: 20px; text-align: center; }
+.edname { flex: 1; min-width: 0; font-weight: 700; }
+.ib { padding: 6px 9px; min-width: 34px; }
+.ib.x { color: var(--muted); }
+.ib:disabled { opacity: .35; }
+.edgrid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, .8fr) minmax(0, 1.1fr) minmax(0, .8fr) 34px; gap: 6px; align-items: center; }
+.edgrid > span { font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); padding-left: 4px; }
+.edgrid .inp { width: 100%; min-width: 0; padding: 8px 8px; font-family: var(--mono); font-size: 15px; }
+.edfoot { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.edadd { padding: 6px 12px; }
+.eddel { color: var(--warn); }
+.ed, .edex { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.edtop .field { min-width: 0; } .edtop .field input { width: 100%; }
+.edexh .ib { flex: none; }
+#bDays { min-width: 0; }
 </style>
 </head>
 <body>
@@ -469,7 +519,7 @@ details.tfold[open] { display: grid; gap: 10px; }
     <section class="panel" id="planBox">
       <div class="head">
         <button class="back" id="btnBack">← All days</button>
-        <div class="chips" id="dayChips" role="group" aria-label="Day"></div>
+        <div class="row" style="gap:8px"><button id="btnEditDay" class="edbtn">Edit</button><div class="chips" id="dayChips" role="group" aria-label="Day"></div></div>
       </div>
       <div id="dayView"></div>
     </section>
@@ -509,9 +559,10 @@ details.tfold[open] { display: grid; gap: 10px; }
         <div class="head"><h2>Rep details</h2><div class="chips" role="tablist" aria-label="Rep details">
           <button data-rd="path" aria-pressed="true">Bar path</button><button data-rd="tilt" aria-pressed="false">Tilt</button></div></div>
         <div id="rdPath">
-          <div class="head" style="margin:0"><span class="which">Side view</span><span class="which" id="pathWhich"></span></div>
+          <div class="subhead"><b id="pathWhich">Side view</b><span>front →</span></div>
           <svg id="path" height="300" role="img" aria-label="Side view of the bar path for the selected rep"></svg>
-          <p class="note" id="phaseLine"></p>
+          <div class="plegend" id="pathLegend"></div>
+          <div class="mstats" id="phaseLine"></div>
           <details class="help"><summary>View options and how to read it</summary>
             <div class="toggles">
               <label for="flip"><input type="checkbox" id="flip"> Flip front/back</label>
@@ -522,10 +573,11 @@ details.tfold[open] { display: grid; gap: 10px; }
           </details>
         </div>
         <div id="rdTilt" hidden>
-          <div class="head" style="margin:0"><span class="which">Front view</span><button class="back" id="tiltSwap" style="padding:0">Swap left / right</button></div>
-          <svg id="tiltView" height="160" role="img" aria-label="Front view of the barbell showing how far it tipped"></svg>
-          <p class="note" id="tiltLine">Tilt is how far the bar tips sideways, one end lower than the other, like a see-saw. Level is 0°.</p>
-          <div class="head" style="margin:0"><span class="which">Tilt by rep</span><span class="which">tap a bar to see that rep</span></div>
+          <div class="subhead"><b id="tiltWhich">Front view</b><button class="back" id="tiltSwap" style="padding:0">Swap left / right</button></div>
+          <svg id="tiltView" height="128" role="img" aria-label="Front view of the barbell showing how far it tipped"></svg>
+          <div class="mstats m3" id="tiltLine"></div>
+          <p class="note tnote" id="tiltNote"></p>
+          <div class="subhead"><b>Tilt by rep</b><span>tap a bar to see that rep</span></div>
           <svg id="tiltReps" height="130" role="img" aria-label="Peak bar tilt for every rep of the set"></svg>
         </div>
         <div class="repkey" id="repKey"></div>
@@ -563,13 +615,11 @@ details.tfold[open] { display: grid; gap: 10px; }
     </section>
 
     <section class="panel" id="builder">
-      <div class="head"><h2 id="bTitle">Edit week</h2>
-        <div class="row"><label class="field" for="bWeek">Week <select id="bWeek"></select></label><button id="bAddWeek">Add week</button><button id="bCopyWeek">Copy week</button></div>
-      </div>
-      <details class="help"><summary>How to write sets (3x5 @ 160 …)</summary><p class="note">One line per exercise. Prescription: <b>3x5 @ 160</b>, <b>1x3 @ 80%</b>, <b>4x4 rpe 6</b>, or several joined with commas: <b>1x1 @ 170, 3x3 @ 155 rpe 6</b>. % uses the 1RMs above.</p></details>
-      <label class="field" for="bWeekName">Week name <input id="bWeekName" class="inp" style="width:160px"></label>
-      <div id="bDays" style="display:grid;gap:10px"></div>
-      <div class="row"><button id="bAddDay">Add day</button><button id="bSave" class="primary">Save week</button><button id="bDelWeek">Delete week</button></div>
+      <div class="head"><h2>Edit program</h2><span class="which">Changes save as you go</span></div>
+      <div class="row"><label class="field" for="bWeek">Week <select id="bWeek"></select></label><label class="field" for="bWeekName">Name <input id="bWeekName" class="inp" style="width:150px"></label></div>
+      <div class="row"><div class="chips" id="bDayChips" role="group" aria-label="Day"></div><button id="bAddDay">+ Day</button></div>
+      <div id="bDays"></div>
+      <details class="help"><summary>More week actions</summary><div class="row"><button id="bAddWeek">New empty week</button><button id="bCopyWeek">Copy this week</button><button id="bDelWeek">Delete week</button></div></details>
     </section>
   </div>
 
@@ -1113,7 +1163,10 @@ function renderTrain(fresh) {
   $("dayChips").hidden = isLoose();
   $("dayChips").innerHTML = w ? w.days.map((d, i) => `<button data-d="${i}" aria-pressed="${i === dy}">D${i + 1}</button>`).join("") : "";
   const d = day(), box = $("dayView");
+  $("btnEditDay").hidden = view !== "day" || !d;
+  $("btnEditDay").textContent = editDay ? "Done" : "Edit"; $("btnEditDay").classList.toggle("primary", editDay);
   if (view === "test") { box.innerHTML = testPanel(); return; }
+  if (editDay && view === "day" && d) { if (!box.contains(document.activeElement) || !box.querySelector(".ed")) box.innerHTML = editorHtml(wk, dy); return; }
   if (!d || view === "free") { box.innerHTML = `<div class="dayhead"><span class="daynum">·</span><div><h3>Free lift</h3><span class="which">Set the load above, tap Start set, and lift. Reps keep logging until you tap End set.</span></div></div>`; return; }
   const cut = +$("vlCut").value;
   let h = `<div class="dayhead"><span class="daynum">${dy + 1}</span><div><h3>${esc(d.title || "Day " + (dy + 1))}</h3><span class="which">${esc(w.name)}</span></div></div>`;
@@ -1293,9 +1346,10 @@ function pose(kind, sc, bx, by) {
 }
 // front view of the bar: 2.2 m bar with plates; the tilt is drawn 5x bigger than real so small tilts are visible
 function drawTilt(rep, frac) {
-  const svg = $("tiltView"), W = svg.clientWidth || 320, H = 160, ink = tok("--muted");
+  const svg = $("tiltView"), W = svg.clientWidth || 320, H = 128, ink = tok("--muted");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   const t = rep && rep.tilt != null ? rep.tilt * (puckCfg.tiltFlip ? -1 : 1) : null;
+  $("tiltWhich").textContent = rep ? `Rep ${rep.r} · front view` : "Front view";
   const cx = W / 2, cy = 62, half = Math.min(W * 0.42, 190), ex = 5, ang = (t == null ? 0 : t * frac) * ex * Math.PI / 180;
   const dx = Math.cos(ang) * half, dy = Math.sin(ang) * half;               // + angle = right end lower (screen y down)
   const L = [cx - dx, cy - dy], Rr = [cx + dx, cy + dy];
@@ -1317,19 +1371,21 @@ function drawTilt(rep, frac) {
     return h;
   };
   let s = `<line x1="${cx - half - 10}" x2="${cx + half + 10}" y1="${cy}" y2="${cy}" stroke="${tok("--line")}" stroke-dasharray="4 4"/>`;
-  s += `<text x="${cx}" y="14" font-size="10.5" fill="${ink}" text-anchor="middle">dashed line = level</text>`;
   s += seg2(-657, 657, 4, tok("--ink"));        // shaft
   s += plate(-1) + plate(1);
   s += `<rect x="${cx - 9}" y="${cy - 12 + dy * 0}" width="18" height="10" rx="3" transform="rotate(${ang * 180 / Math.PI} ${cx} ${cy})" fill="${tok("--z-mid")}"/>`;
-  s += `<text x="${cx}" y="${H - 8}" text-anchor="middle" font-size="10.5" fill="${ink}">${t == null ? "Needs puck firmware v0.7" : "front view · angle drawn 5× bigger than real"}</text>`;
   if (t != null) {
     const cm = Math.abs(Math.sin(t * Math.PI / 180)) * 220;
-    s += `<text x="${t >= 0 ? W - 8 : 8}" y="${H - 26}" text-anchor="${t >= 0 ? "end" : "start"}" font-size="11.5" font-weight="700" fill="${tok("--warn")}">${frac > 0.05 && Math.abs(t) >= 0.2 ? "▼ this end lower" : ""}</text>`;
-    const side = t >= 0 ? "right" : "left";
-    $("tiltLine").textContent = Math.abs(t) < 0.3
-      ? `Peak tilt ${Math.abs(t).toFixed(1)}°: the bar stayed level.`
-      : `Peak tilt ${Math.abs(t).toFixed(1)}°: the ${side} end dropped about ${cm.toFixed(1)} cm below the other on a 2.2 m bar${Math.abs(t) >= 2 ? ". That's a noticeable lean, often one arm or leg finishing later" : ""}.`;
-  } else $("tiltLine").textContent = "Tilt is how far the bar tips sideways, one end lower than the other, like a see-saw. Level is 0°.";
+    s += `<text x="${t >= 0 ? W - 8 : 8}" y="${H - 26}" text-anchor="${t >= 0 ? "end" : "start"}" font-size="11.5" font-weight="700" fill="${tok("--warn")}">${frac > 0.05 && Math.abs(t) >= 0.2 ? "▼ lower" : ""}</text>`;
+    const a = Math.abs(t), level = a < 0.3, verdict = a < 0.5 ? ["Level", "ok"] : a < 2 ? ["Slight", "mid"] : ["Leaning", "warn"];
+    $("tiltLine").innerHTML = mtile("Peak tilt", a.toFixed(1) + "°", `<em class="vd ${verdict[1]}">${verdict[0]}</em>`) +
+      mtile("Lower end", level ? "–" : t >= 0 ? "Right" : "Left") + mtile("Drop", level ? "–" : cm.toFixed(1) + " cm", "on a 2.2 m bar");
+    $("tiltNote").textContent = a >= 2 ? "A lean this size usually means one arm or leg finished later. Drawing is 5× steeper than real so small tilts show."
+      : "Dashed line is level. Drawing is 5× steeper than real so small tilts show.";
+  } else {
+    $("tiltLine").innerHTML = "";
+    $("tiltNote").textContent = t === null && rep ? "No tilt for this rep (needs puck firmware v0.7)." : "Tilt is how far the bar tips sideways, one end lower than the other, like a see-saw. Level is 0°.";
+  }
   svg.innerHTML = s;
 }
 
@@ -1355,9 +1411,9 @@ function drawTiltReps(set, cur) {
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   if (!reps.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="12" fill="${ink}">No tilt yet (needs puck firmware v0.7)</text>`; return; }
   const sg = puckCfg.tiltFlip ? -1 : 1, mx = Math.max(2, ...reps.map(r => Math.abs(r.tilt))) * 1.15;
-  const mid = H / 2 - 6, pl = 46, n = Math.max(reps.length, 5), slot = (W - pl - 6) / n, bw = Math.min(30, slot * 0.6), y = v => mid - v / mx * (H / 2 - 24);
+  const mid = H / 2 - 6, pl = 60, n = Math.max(reps.length, 5), slot = (W - pl - 6) / n, bw = Math.min(30, slot * 0.6), y = v => mid - v / mx * (H / 2 - 24);
   let s = `<line x1="${pl}" x2="${W - 4}" y1="${mid}" y2="${mid}" stroke="${tok("--line")}" stroke-width="1.5"/>`;
-  s += `<text x="${pl - 6}" y="16" text-anchor="end" font-size="10" fill="${ink}">right ↓</text><text x="${pl - 6}" y="${H - 18}" text-anchor="end" font-size="10" fill="${ink}">left ↓</text>`;
+  s += `<text x="2" y="${mid - 8}" font-size="10.5" fill="${ink}">Right low</text><text x="2" y="${mid + 16}" font-size="10.5" fill="${ink}">Left low</text>`;
   reps.forEach((r, i) => {
     const v = r.tilt * sg, x = pl + slot * i + (slot - bw) / 2, y0 = Math.min(mid, y(v)), h = Math.max(2, Math.abs(y(v) - mid)), on = r === cur && !pathAll;
     s += `<g data-tkey="${set.id},${set.reps.indexOf(r)}" style="cursor:pointer"><rect x="${x - 4}" y="0" width="${bw + 8}" height="${H}" fill="transparent"/>
@@ -1375,16 +1431,19 @@ document.addEventListener("click", e => {
   sel = { id, r }; pathAll = false; render(false);
 });
 
+const mtile = (k, v, sub, cls) => `<div class="${cls || ""}"><small>${k}</small><b>${v}</b>${sub ? `<span>${sub}</span>` : ""}</div>`;
 let pathAnim = null;
 function drawPath(set, selRep) {
   const svg = $("path"), W = svg.clientWidth || 320, H = 300, pad = 14, ink = tok("--muted"), line = tok("--line");
   svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
   if (pathAnim) { cancelAnimationFrame(pathAnim); pathAnim = null; }
   const paths = set ? set.reps.map(r => ({ r, p: shownPath(r, set.lift) })).filter(o => o.p) : [];
-  $("pathWhich").textContent = selRep ? `Rep ${selRep.r}` : "";
-  if (!paths.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">${set && set.reps.length ? "No path for this rep (needs puck firmware v0.7)" : "No reps yet"}</text>`; $("phaseLine").textContent = ""; drawTilt(selRep, 1); renderRepKey(set, selRep); return; }
+  $("pathWhich").textContent = pathAll ? "All reps · side view" : selRep ? `Rep ${selRep.r} · side view` : "Side view";
+  if (!paths.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">${set && set.reps.length ? "No path for this rep (needs puck firmware v0.7)" : "No reps yet"}</text>`; $("phaseLine").innerHTML = ""; $("pathLegend").innerHTML = ""; drawTilt(selRep, 1); renderRepKey(set, selRep); return; }
   const cur = paths.find(o => o.r === selRep) || paths[paths.length - 1];
-  { const r = cur.r; $("phaseLine").textContent = r.tut != null ? `Rep ${r.r}: down ${r.ecc.toFixed(1)} s (${(r.ev || 0).toFixed(2)} m/s) · pause ${r.pause.toFixed(1)} s · up ${r.t.toFixed(1)} s · ${r.tut.toFixed(1)} s under tension` : ""; }
+  { const r = cur.r;
+    $("phaseLine").innerHTML = pathAll ? "" : r.tut != null ? mtile("Down", r.ecc.toFixed(1) + " s", (r.ev || 0).toFixed(2) + " m/s") + mtile("Pause", r.pause.toFixed(1) + " s") +
+      mtile("Up", r.t.toFixed(1) + " s", r.mv.toFixed(2) + " m/s") + mtile("Total", r.tut.toFixed(1) + " s", "under tension") : r.t != null ? mtile("Up", r.t.toFixed(1) + " s", r.mv.toFixed(2) + " m/s") : ""; }
   const close = $("pathZoom").checked || pathAll, kind = liftKind(set, cur.p), sc = scene(kind, cur.p);
   let xmin, xmax, ymin, ymax;
   if (close) {
@@ -1405,7 +1464,6 @@ function drawPath(set, selRep) {
       [sc.S[0] + sc.dir * -230, sc.S[0] + sc.dir * 560].forEach(x => s += `<line x1="${X(x)}" x2="${X(x)}" y1="${Y(sc.Bt - 50)}" y2="${Y(sc.floor)}" stroke="${ink}" stroke-width="2"/>`);
       s += `<text x="${X(sc.S[0] + sc.dir * 900)}" y="${Y(sc.floor) - 6}" text-anchor="middle" font-size="10.5" fill="${ink}">feet</text>`;
     }
-    s += `<text x="${W - 8}" y="16" text-anchor="end" font-size="11" fill="${ink}">front →</text>`;
   }
   const d = p => p.map(([x, y], i) => `${i ? "L" : "M"}${X(x).toFixed(1)} ${Y(y).toFixed(1)}`).join(" ");
   // every rep in its own colour; the selected rep on top, thicker, with its lowering dashed
@@ -1415,7 +1473,9 @@ function drawPath(set, selRep) {
   s += `<path d="${d(p.slice(lo))}" fill="none" stroke="${repCol(cur.r)}" stroke-width="${pathAll ? 3 : 4}" stroke-linecap="round"/>`;
   if (cur.r.pause != null && cur.r.pause >= 0.1 && lo > 0) s += `<text x="${X(p[lo][0]) + 10}" y="${Y(p[lo][1]) + 4}" font-size="11" font-weight="600" fill="${ink}">${cur.r.pause.toFixed(1)} s pause</text>`;
   s += `<g id="figure"></g>`;
-  svg.innerHTML = s + `<text x="8" y="${H - 8}" font-size="10.5" fill="${ink}">${pathAll ? "all reps" : `rep ${cur.r.r}: dashed = down · solid = up`}${close ? "" : " · figure is to scale, not you"}</text>`;
+  svg.innerHTML = s;
+  $("pathLegend").innerHTML = pathAll ? `<span>Each rep in its own colour, as in the table</span><span class="m">Grid 5 cm</span>`
+    : `<span><i class="lg dash" style="--c:${repCol(cur.r)}"></i>Down</span><span><i class="lg solid" style="--c:${repCol(cur.r)}"></i>Up</span>${cur.r.pause != null && cur.r.pause >= 0.1 ? `<span><i class="lg dot"></i>Pause</span>` : ""}<span class="m">Grid ${close ? 5 : 10} cm${close ? "" : " · figure to scale"}</span>`;
   renderRepKey(set, cur.r);
   const g = svg.querySelector("#figure"), body = tok("--muted"), plate = tok("--ink");
   const frame = (bx, by) => {
@@ -1481,21 +1541,80 @@ function textToSets(txt) {
   });
   return sets;
 }
+// ---------------- program editor: edits the program directly (saves on every change, with undo)
+let bDay = 0, editDay = false, edUndo = [];
+const loadTxt = st => st.load != null ? kg(st.load) : st.pct != null ? st.pct + "%" : "";
+function editorHtml(wi, di) {
+  const p = prog(), w = p && p.weeks[wi], d = w && w.days[di];
+  if (!d) return `<p class="empty">This week has no days yet. Tap + Day.</p>`;
+  let h = `<div class="ed" data-xw="${wi}" data-xd="${di}">`;
+  if (sync.url) h += `<p class="msg" style="margin:0">This program is linked to Google Sheets. Edits here are replaced the next time it loads from the sheet, so change the sheet for anything permanent.</p>`;
+  h += `<div class="edtop"><label class="field" style="flex:1">Day name <input class="inp" data-f="title" value="${esc(d.title || "")}" placeholder="e.g. Squat & Bench"></label>
+    <button class="edundo" data-op="undo"${edUndo.length ? "" : " disabled"}>↶ Undo</button></div>`;
+  d.exercises.forEach((ex, e) => {
+    h += `<div class="edex"><div class="edexh"><span class="ednum">${e + 1}</span><input class="inp edname" data-f="name" data-e="${e}" value="${esc(ex.name)}" placeholder="Exercise name">
+      <button class="ib" data-op="up" data-e="${e}" aria-label="Move up"${e ? "" : " disabled"}>↑</button><button class="ib" data-op="down" data-e="${e}" aria-label="Move down"${e < d.exercises.length - 1 ? "" : " disabled"}>↓</button><button class="ib x" data-op="delex" data-e="${e}" aria-label="Delete exercise">✕</button></div>
+      <div class="edgrid"><span>Set</span><span>Reps</span><span>Load</span><span>RPE</span><span></span>
+      ${ex.sets.map((st, k) => `<input class="inp" data-f="label" data-e="${e}" data-s="${k}" value="${esc(st.label || "Set " + (k + 1))}" aria-label="Set name">
+        <input class="inp" data-f="reps" data-e="${e}" data-s="${k}" value="${st.reps ?? ""}" inputmode="numeric" aria-label="Reps">
+        <input class="inp" data-f="load" data-e="${e}" data-s="${k}" value="${loadTxt(st)}" inputmode="decimal" placeholder="kg / %" aria-label="Load in kg, or % of max">
+        <input class="inp" data-f="rpe" data-e="${e}" data-s="${k}" value="${esc(st.rpe || "")}" inputmode="decimal" placeholder="–" aria-label="RPE">
+        <button class="ib x" data-op="delset" data-e="${e}" data-s="${k}" aria-label="Delete set">✕</button>`).join("")}</div>
+      <div class="edfoot"><button class="edadd" data-op="addset" data-e="${e}">+ Add set</button><span class="which">${ex.track ? "tracked by the puck" : "not tracked (no puck)"}</span></div></div>`;
+  });
+  h += `<div class="row"><button class="primary" data-op="addex">+ Add exercise</button><button data-op="delday" class="eddel">Delete this day</button></div>
+    <p class="note">Load: type kg (160) or % of your max (80%). Add set copies the last set.</p></div>`;
+  return h;
+}
 function renderBuilder() {
-  const p = prog(); const w = p.weeks[bWeek]; if (!w) return;
-  if (!bDraft || bDraft.src !== w) bDraft = { src: w, name: w.name, days: w.days.map(d => ({ title: d.title, notes: d.notes || "", accessories: d.accessories || [], ex: d.exercises.map(ex => ({ name: ex.name, txt: setToText(ex), unit: ex.unit, track: ex.track, lift: ex.lift })) })) };
-  $("bWeekName").value = bDraft.name;
-  $("bDays").innerHTML = bDraft.days.map((d, i) => `<div class="bday"><div class="row"><b style="font:800 22px var(--display);color:var(--accent)">${i + 1}</b><input class="inp" data-dt="${i}" value="${esc(d.title)}" placeholder="Day title, e.g. Squat & Bench" style="flex:1"><button class="x" data-dd="${i}" aria-label="Delete day ${i + 1}">✕</button></div>
-    ${d.ex.map((ex, j) => `<div class="brow"><input class="inp" data-en="${i},${j}" value="${esc(ex.name)}" placeholder="Exercise"><input class="inp presc" data-et="${i},${j}" value="${esc(ex.txt)}" placeholder="3x5 @ 160"><button class="x" data-ed="${i},${j}" aria-label="Delete exercise">✕</button></div>`).join("")}
-    <div><button data-ea="${i}">Add exercise</button></div></div>`).join("");
+  const p = prog(); const w = p && p.weeks[bWeek]; if (!w) return;
+  if (bDay >= w.days.length) bDay = Math.max(0, w.days.length - 1);
+  if (document.activeElement !== $("bWeekName")) $("bWeekName").value = w.name;
+  $("bDayChips").innerHTML = w.days.map((d, i) => `<button data-bd="${i}" aria-pressed="${i === bDay}" title="${esc(d.title || "")}">D${i + 1}</button>`).join("");
+  if (!$("bDays").contains(document.activeElement)) $("bDays").innerHTML = editorHtml(bWeek, bDay);
 }
-function saveBuilder() {
-  const p = prog(); const w = p.weeks[bWeek];
-  w.name = $("bWeekName").value.trim() || w.name;
-  w.days = bDraft.days.map(d => ({ title: d.title, notes: d.notes, accessories: d.accessories, exercises: d.ex.filter(ex => ex.name.trim()).map(ex => {
-    const L = liftOf(ex.name); return { name: ex.name.trim(), lift: L.lift, track: L.track && ex.unit !== "lbs", unit: ex.unit || "kg", sets: textToSets(ex.txt) }; }) }));
-  bDraft = null; save(); render(false); msg(`Saved ${w.name}.`, "good");
-}
+function edTarget(el) { const r = el.closest(".ed"); if (!r) return null; const p = prog(); const wi = +r.dataset.xw, di = +r.dataset.xd; return { p, wi, di, w: p.weeks[wi], d: p.weeks[wi].days[di] }; }
+function edSnap(T) { edUndo.push({ pid: T.p.id, wi: T.wi, json: JSON.stringify(T.w) }); if (edUndo.length > 40) edUndo.shift(); }
+function edRefresh() { pickNext(); save(); render(false); }
+document.addEventListener("change", e => {
+  const t = e.target; if (!t.dataset || !t.dataset.f) return; const T = edTarget(t); if (!T) return;
+  edSnap(T);
+  const f = t.dataset.f, v = t.value.trim();
+  if (f === "title") T.d.title = v;
+  else {
+    const ex = T.d.exercises[+t.dataset.e];
+    if (f === "name") { ex.name = v; const L = liftOf(v); ex.lift = L.lift; ex.track = L.track && ex.unit !== "lbs"; }
+    else {
+      const st = ex.sets[+t.dataset.s];
+      if (f === "label") st.label = v || `Set ${+t.dataset.s + 1}`;
+      if (f === "reps") st.reps = parseInt(v) || 0;
+      if (f === "rpe") st.rpe = v;
+      if (f === "load") { const m = v.match(/^([\d.]+)\s*(%)?/); st.load = m && !m[2] ? +m[1] : null; st.pct = m && m[2] ? +m[1] : null; t.value = loadTxt(st); }
+    }
+  }
+  save(); const u = t.closest(".ed").querySelector('[data-op="undo"]'); if (u) u.disabled = false;
+  msg("Saved.", "good"); setTimeout(() => { if ($("msg").textContent === "Saved.") msg(""); }, 1200);
+});
+document.addEventListener("click", e => {
+  const b = e.target.closest(".ed [data-op]"); if (!b) return; const T = edTarget(b); if (!T) return;
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // let the editor redraw
+  const op = b.dataset.op, ex = b.dataset.e != null ? T.d.exercises[+b.dataset.e] : null, ei = +b.dataset.e;
+  if (op === "undo") {
+    const u = edUndo.pop(); if (!u) return; const p = programs.find(x => x.id === u.pid); if (p && p.weeks[u.wi]) p.weeks[u.wi] = JSON.parse(u.json);
+    edRefresh(); msg("Undone.", "good"); return;
+  }
+  if (op === "delday" && b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to delete the day"; return; }
+  edSnap(T);
+  if (op === "up" && ei > 0) T.d.exercises.splice(ei - 1, 0, ...T.d.exercises.splice(ei, 1));
+  if (op === "down" && ei < T.d.exercises.length - 1) T.d.exercises.splice(ei + 1, 0, ...T.d.exercises.splice(ei, 1));
+  if (op === "delex") T.d.exercises.splice(ei, 1);
+  if (op === "addset") { const last = ex.sets[ex.sets.length - 1]; const n = ex.sets.length + 1; ex.sets.push(last ? { ...last, label: /^set \d+$/i.test(last.label || "") || !last.label ? `Set ${n}` : last.label, vel: undefined } : { label: "Set 1", reps: 5, load: null, pct: null, rpe: "" }); }
+  if (op === "delset") ex.sets.splice(+b.dataset.s, 1);
+  if (op === "addex") T.d.exercises.push({ name: "", lift: "Other", track: false, unit: "kg", sets: [{ label: "Set 1", reps: 5, load: null, pct: null, rpe: "" }] });
+  if (op === "delday") { T.w.days.splice(T.di, 1); if (!T.w.days.length) T.w.days.push({ title: "", notes: "", accessories: [], exercises: [] }); bDay = Math.min(bDay, T.w.days.length - 1); if (T.wi === wk) dy = Math.min(dy, T.w.days.length - 1); }
+  edRefresh();
+  if (op === "addex") { const ins = document.querySelectorAll(".ed .edname"); const last = ins[ins.length - 1]; if (last) last.focus(); }
+});
 
 // ---------------- import from Sheets / CSV
 function parseSheet(text) {
@@ -1896,6 +2015,7 @@ $("weeks").onclick = e => {
   const c = e.target.closest(".daycard"); if (c) openDay(+c.dataset.w, +c.dataset.d);
 };
 $("pastWeeks").onclick = e => { const c = e.target.closest(".daycard"); if (c) { tab = "train"; openDay(+c.dataset.w, +c.dataset.d); } };
+$("btnBack").addEventListener("click", () => { editDay = false; });
 $("btnBack").onclick = () => { if (active) { msg("Finish the set first: tap End set."); return; } view = "home"; sel = null; homeWeek = null; msg(""); render(false); window.scrollTo(0, 0); };
 $("btnTest").onclick = () => { view = "test"; next = null; tab = "train"; render(false); window.scrollTo(0, 0); };
 $("dayView").addEventListener("click", e => {
@@ -1964,26 +2084,14 @@ $("btnNewProg").onclick = () => { const p = { id: "p" + Date.now(), name: "New p
 [["maxS", "Squat"], ["maxB", "Bench"], ["maxD", "Deadlift"]].forEach(([id, k]) => $(id).addEventListener("change", e => { const p = prog(); if (p) { p.maxes[k] = +e.target.value || 0; save(); render(false); } }));
 $("btnImport").onclick = () => doImport($("importText").value);
 $("importFile").onchange = e => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => doImport(String(r.result)); r.readAsText(f); e.target.value = ""; };
-$("bWeek").onchange = e => { bWeek = +e.target.value; bDraft = null; renderBuilder(); };
-$("bWeekName").oninput = e => { if (bDraft) bDraft.name = e.target.value; };
-$("bDays").oninput = e => {
-  const t = e.target, D = bDraft.days;
-  if (t.dataset.dt != null) D[+t.dataset.dt].title = t.value;
-  if (t.dataset.en) { const [i, j] = t.dataset.en.split(",").map(Number); D[i].ex[j].name = t.value; }
-  if (t.dataset.et) { const [i, j] = t.dataset.et.split(",").map(Number); D[i].ex[j].txt = t.value; }
-};
-$("bDays").onclick = e => {
-  const b = e.target.closest("button"); if (!b) return; const D = bDraft.days;
-  if (b.dataset.ea != null) D[+b.dataset.ea].ex.push({ name: "", txt: "", unit: "kg" });
-  if (b.dataset.ed) { const [i, j] = b.dataset.ed.split(",").map(Number); D[i].ex.splice(j, 1); }
-  if (b.dataset.dd != null) D.splice(+b.dataset.dd, 1);
-  renderBuilder();
-};
-$("bAddDay").onclick = () => { bDraft.days.push({ title: "", notes: "", accessories: [], ex: [{ name: "", txt: "", unit: "kg" }] }); renderBuilder(); };
-$("bSave").onclick = saveBuilder;
-$("bAddWeek").onclick = () => { const p = prog(); p.weeks.push({ name: `Week ${p.weeks.length + 1}`, days: [{ title: "", notes: "", accessories: [], exercises: [] }] }); bWeek = p.weeks.length - 1; bDraft = null; save(); render(false); };
-$("bCopyWeek").onclick = () => { const p = prog(); const c = JSON.parse(JSON.stringify(p.weeks[bWeek])); c.name = `Week ${p.weeks.length + 1}`; p.weeks.push(c); bWeek = p.weeks.length - 1; bDraft = null; save(); render(false); msg(`Copied into ${c.name}. Change the loads and save.`, "good"); };
-$("bDelWeek").onclick = e => { const b = e.target; if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; return; } const p = prog(); if (p.weeks.length > 1) { p.weeks.splice(bWeek, 1); bWeek = wk = 0; dy = 0; } b.dataset.armed = ""; b.textContent = "Delete week"; bDraft = null; pickNext(); save(); render(false); };
+$("bWeek").onchange = e => { bWeek = +e.target.value; bDay = 0; renderBuilder(); };
+$("bWeekName").onchange = e => { const w = prog().weeks[bWeek]; w.name = e.target.value.trim() || w.name; save(); render(false); };
+$("bDayChips").onclick = e => { const b = e.target.closest("[data-bd]"); if (!b) return; bDay = +b.dataset.bd; renderBuilder(); };
+$("bAddDay").onclick = () => { const w = prog().weeks[bWeek]; w.days.push({ title: "", notes: "", accessories: [], exercises: [] }); bDay = w.days.length - 1; save(); render(false); };
+$("bAddWeek").onclick = () => { const p = prog(); p.weeks.push({ name: `Week ${p.weeks.length + 1}`, days: [{ title: "", notes: "", accessories: [], exercises: [] }] }); bWeek = p.weeks.length - 1; bDay = 0; save(); render(false); };
+$("bCopyWeek").onclick = () => { const p = prog(); const c = JSON.parse(JSON.stringify(p.weeks[bWeek])); c.name = `Week ${p.weeks.length + 1}`; c.days.forEach(d => d.exercises.forEach(x => x.sets.forEach(st => delete st.vel))); p.weeks.push(c); bWeek = p.weeks.length - 1; bDay = 0; save(); render(false); msg(`Copied into ${c.name}. Change what's different.`, "good"); };
+$("bDelWeek").onclick = e => { const b = e.target; if (b.dataset.armed !== "1") { b.dataset.armed = "1"; b.textContent = "Tap again to delete"; return; } const p = prog(); if (p.weeks.length > 1) { p.weeks.splice(bWeek, 1); bWeek = wk = 0; dy = 0; bDay = 0; } b.dataset.armed = ""; b.textContent = "Delete week"; pickNext(); save(); render(false); };
+$("btnEditDay").onclick = () => { editDay = !editDay; render(false); if (!editDay) msg(""); };
 window.addEventListener("resize", () => renderLive());
 $("btnLink").onclick = () => {
   const url = $("syncUrl").value.trim(), key = $("syncKey").value.trim();
