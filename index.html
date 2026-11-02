@@ -374,6 +374,58 @@ details.ota { border-top: 1px solid var(--line); padding-top: 10px; }
 details.ota > summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
 details.ota[open] { display: grid; gap: 10px; }
 details.ota input { min-width: 0; width: 11em; }
+
+/* ---- usability pass ---- */
+.tabs button { padding: 7px 9px; }
+@media (max-width: 420px) { .tabs { gap: 0; } .tabs button { font-size: 12.5px; letter-spacing: .04em; padding: 7px 8px; } }
+#dayWrap #dock { order: 0; }
+#dayWrap #planBox { order: 1; }
+#dayWrap #liveBox { order: 2; }
+#dayWrap .charts { order: 3; }
+#dayWrap.lifting #planBox { order: 4; }
+details.help { font-size: 13px; }
+details.help > summary { cursor: pointer; color: var(--muted); font-weight: 600; list-style: none; display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; }
+details.help > summary::-webkit-details-marker { display: none; }
+details.help > summary::before { content: "?"; display: inline-grid; place-items: center; width: 17px; height: 17px; border-radius: 50%; border: 1.5px solid currentColor; font-size: 11px; font-weight: 800; }
+details.help[open] > summary { color: var(--ink); }
+details.help[open] { display: grid; gap: 8px; }
+.planbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.exmini { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); }
+.exmini b { font: 700 16px/1.2 var(--display); letter-spacing: .03em; text-transform: uppercase; flex: 1; min-width: 0; }
+.exmini span { color: var(--muted); font-size: 13px; white-space: nowrap; }
+.exmini i { color: var(--muted); font-style: normal; }
+details.exacc > summary { cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; list-style: none; }
+details.exacc > summary::-webkit-details-marker { display: none; }
+details.exacc > summary b { font: 700 16px/1.2 var(--display); letter-spacing: .03em; text-transform: uppercase; }
+details.exacc > summary span { color: var(--muted); font-size: 13px; }
+details.exacc[open] > summary { margin-bottom: 8px; }
+#repDetails .chips button { padding: 6px 12px; }
+#tab-settings select { min-width: 6.2em; }
+#tiltSwap, #btnPlanJump { font-size: 12px; letter-spacing: .06em; }
+
+/* ---- test trial ---- */
+.tprog { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
+.tbar { flex: 1; height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.tbar i { display: block; height: 100%; background: var(--ok); border-radius: 99px; transition: width .3s; }
+.tnext { display: grid; gap: 3px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); border-left: 4px solid var(--accent); background: var(--panel); }
+.tnext small { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.tnext b { font-size: 17px; }
+.tnext span { color: var(--muted); font-size: 14px; }
+.tnext.ok { border-left-color: var(--ok); }
+.tchecks { display: flex; flex-wrap: wrap; gap: 6px; }
+.tchecks span { font-size: 12.5px; padding: 4px 9px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+.tchecks span.ok { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: color-mix(in srgb, var(--ok) 8%, transparent); }
+.trow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+details.tfold { border-top: 1px solid var(--line); padding-top: 10px; }
+details.tfold > summary { cursor: pointer; font-weight: 700; list-style: none; display: flex; align-items: center; gap: 8px; }
+details.tfold > summary::-webkit-details-marker { display: none; }
+details.tfold > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+details.tfold[open] > summary::before { transform: rotate(90deg); }
+details.tfold > summary em { font-style: normal; font-weight: 500; color: var(--muted); font-size: 13px; }
+details.tfold[open] { display: grid; gap: 10px; }
+.tdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.dockinfo span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dock, .dockin { min-width: 0; max-width: 100%; }
 </style>
 </head>
 <body>
@@ -390,6 +442,7 @@ details.ota input { min-width: 0; width: 11em; }
     <button role="tab" data-tab="program" aria-selected="false">Program</button>
     <button role="tab" data-tab="history" aria-selected="false">History</button>
     <button role="tab" data-tab="whoop" aria-selected="false">WHOOP</button>
+    <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
   </nav>
 </header>
 
@@ -413,7 +466,7 @@ details.ota input { min-width: 0; width: 11em; }
     <button id="btnArm" class="arm" aria-pressed="false">Start set</button>
   </div>
 </div>
-    <section class="panel">
+    <section class="panel" id="planBox">
       <div class="head">
         <button class="back" id="btnBack">← All days</button>
         <div class="chips" id="dayChips" role="group" aria-label="Day"></div>
@@ -422,7 +475,7 @@ details.ota input { min-width: 0; width: 11em; }
     </section>
 
     <section class="panel" id="liveBox" aria-live="polite">
-      <div class="head"><h2 id="liveTitle">Last rep</h2><span id="liveWhich" class="which"></span></div>
+      <div class="head"><h2 id="liveTitle">Last rep</h2><span id="liveWhich" class="which"></span><button class="back" id="btnPlanJump" style="margin-left:auto;padding:0">Today's plan ↓</button></div>
       <div class="live">
         <div>
           <div><span class="num" id="mv">–</span><span class="unit">m/s</span></div>
@@ -452,22 +505,30 @@ details.ota input { min-width: 0; width: 11em; }
         </div>
         <p class="note" id="cutLegend"></p>
       </section>
-      <section class="panel">
-        <div class="head"><h2>Bar path · side view</h2><span class="which" id="pathWhich"></span></div>
-        <svg id="path" height="300" role="img" aria-label="Side view of the bar path for the selected rep"></svg>
-        <p class="note" id="phaseLine"></p>
-        <div class="repkey" id="repKey"></div>
-        <div class="head" style="margin-top:4px"><h2>Bar tilt · front view</h2><button class="back" id="tiltSwap" style="padding:0">Swap left / right</button></div>
-        <svg id="tiltView" height="160" role="img" aria-label="Front view of the barbell showing how far it tipped"></svg>
-        <p class="note" id="tiltLine">Tilt is how far the bar tips sideways, one end lower than the other, like a see-saw. Level is 0°.</p>
-        <div class="head"><h2>Tilt by rep</h2><span class="which">tap a bar to see that rep</span></div>
-        <svg id="tiltReps" height="130" role="img" aria-label="Peak bar tilt for every rep of the set"></svg>
-        <div class="toggles">
-          <label for="flip"><input type="checkbox" id="flip"> Flip front/back</label>
-          <label for="closeLoop"><input type="checkbox" id="closeLoop" checked> Lockout over start point</label>
-          <label for="pathZoom"><input type="checkbox" id="pathZoom"> Close-up</label>
+      <section class="panel" id="repDetails">
+        <div class="head"><h2>Rep details</h2><div class="chips" role="tablist" aria-label="Rep details">
+          <button data-rd="path" aria-pressed="true">Bar path</button><button data-rd="tilt" aria-pressed="false">Tilt</button></div></div>
+        <div id="rdPath">
+          <div class="head" style="margin:0"><span class="which">Side view</span><span class="which" id="pathWhich"></span></div>
+          <svg id="path" height="300" role="img" aria-label="Side view of the bar path for the selected rep"></svg>
+          <p class="note" id="phaseLine"></p>
+          <details class="help"><summary>View options and how to read it</summary>
+            <div class="toggles">
+              <label for="flip"><input type="checkbox" id="flip"> Flip front/back</label>
+              <label for="closeLoop"><input type="checkbox" id="closeLoop" checked> Lockout over start point</label>
+              <label for="pathZoom"><input type="checkbox" id="pathZoom"> Close-up</label>
+            </div>
+            <p class="note">Side view, grid 10 cm (5 cm in close-up). The figure replays the rep; the dot marks the bottom, with your pause time. If the bar drifts the wrong way, tick Flip front/back.</p>
+          </details>
         </div>
-        <p class="note">Side view, grid 10 cm (5 cm in close-up). The figure replays the rep; the dot marks the bottom, with your pause time. If the bar drifts the wrong way, tick Flip front/back.</p>
+        <div id="rdTilt" hidden>
+          <div class="head" style="margin:0"><span class="which">Front view</span><button class="back" id="tiltSwap" style="padding:0">Swap left / right</button></div>
+          <svg id="tiltView" height="160" role="img" aria-label="Front view of the barbell showing how far it tipped"></svg>
+          <p class="note" id="tiltLine">Tilt is how far the bar tips sideways, one end lower than the other, like a see-saw. Level is 0°.</p>
+          <div class="head" style="margin:0"><span class="which">Tilt by rep</span><span class="which">tap a bar to see that rep</span></div>
+          <svg id="tiltReps" height="130" role="img" aria-label="Peak bar tilt for every rep of the set"></svg>
+        </div>
+        <div class="repkey" id="repKey"></div>
       </section>
     </div>
     </div>
@@ -475,26 +536,6 @@ details.ota input { min-width: 0; width: 11em; }
 
   <!-- ================= PROGRAM ================= -->
   <div id="tab-program" class="wrap" style="padding:0" hidden>
-    <section class="panel">
-      <div class="head"><h2>Puck</h2><span class="which" id="puckInfo">Connect the puck to change these</span></div>
-      <div class="toggles" style="font-size:14px">
-        <label for="tapsOn"><input type="checkbox" id="tapsOn" checked> Double-tap the puck to start / end a set · triple-tap deletes the last rep</label>
-      </div>
-      <div class="row" style="margin-top:8px"><label class="field" for="minRom">Minimum rep height: squat, deadlift and others <select id="minRom"><option value="10">10 cm</option><option value="15">15 cm</option><option value="20">20 cm</option><option value="25">25 cm</option><option value="30">30 cm</option></select></label>
-        <label class="field" for="minRomBench">Bench <select id="minRomBench"><option value="10">10 cm</option><option value="15">15 cm</option><option value="20">20 cm</option><option value="25">25 cm</option><option value="30">30 cm</option></select></label></div>
-      <p class="note">Lifts shorter than this aren't counted as reps. The app sets the right one on the puck every time a set starts. A short bench stroke (big arch) can be under 20 cm, so bench defaults to 10 cm; 20 cm suits squat and deadlift and ignores unracking and bumps. Use 10 cm when testing by hand. If a real rep is missed, the app tells you why.</p>
-      <p class="note">The puck's LED and buzzer (if fitted) use the same velocity-loss cut-off as the app (set on the Train screen). Reps lifted while your phone isn't connected are saved on the puck and imported the next time you connect. After 10 minutes still, the puck sleeps; tap it or move the bar to wake it.</p>
-      <div class="row"><button id="pkSync">Get saved reps</button><button id="pkFind">Find puck (flash + buzz)</button><button id="pkSleep">Put puck to sleep</button></div>
-      <details class="ota" id="otaBox">
-        <summary>Wireless firmware update</summary>
-        <p class="note">Update the puck from the Arduino IDE without the USB cable. Save your Wi-Fi once, then tap <b>Update mode</b>: the puck joins Wi-Fi for 10 minutes and shows up in Arduino under Tools → Port as a network port called <b>vbt-puck</b>. Pick it and press Upload. Your computer must be on the same Wi-Fi. If an upload fails the puck keeps its old firmware. Needs puck firmware v0.9 (flash that one by USB).</p>
-        <div class="row"><label class="field" for="wSsid">Wi-Fi name <input id="wSsid" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-          <label class="field" for="wPass">Password <input id="wPass" type="password" autocomplete="off"></label>
-          <button id="wSave">Save Wi-Fi to puck</button></div>
-        <div class="row"><button id="otaGo" class="arm">Update mode</button><button id="otaStop">Turn Wi-Fi off</button></div>
-        <p class="note" id="otaStatus" aria-live="polite">The Wi-Fi password is stored on the puck only, not in this app.</p>
-      </details>
-    </section>
     <section class="panel">
       <div class="head"><h2>Programs</h2><button id="btnNewProg">New program</button></div>
       <div class="plist" id="plist"></div>
@@ -509,18 +550,10 @@ details.ota input { min-width: 0; width: 11em; }
       </div>
     </section>
 
-    <section class="panel" id="syncBox">
-      <div class="head"><h2>Live link to Google Sheets</h2><span class="which" id="syncStatus">Not linked</span></div>
-      <p class="note">Paste the web app link and key from the sync script in your sheet. The app then loads your program from the sheet every time you open it, and writes each finished set's velocity and load back into its row.</p>
-      <label class="field" for="syncUrl" style="display:grid;gap:4px">Web app link <input id="syncUrl" class="inp" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
-      <label class="field" for="syncKey" style="display:grid;gap:4px">Key <input id="syncKey" class="inp" placeholder="vbt-…" autocomplete="off"></label>
-      <div class="toggles"><label for="syncWrite"><input type="checkbox" id="syncWrite" checked> Write velocity and load into the sheet</label></div>
-      <div class="row"><button id="btnLink" class="primary">Link and load program</button><button id="btnRefresh">Refresh now</button><button id="btnUnlink">Unlink</button></div>
-    </section>
 
     <section class="panel">
       <div class="head"><h2>Import a week by pasting</h2></div>
-      <p class="note">In your coach's sheet, open the week's tab, select everything (Ctrl/⌘ + A), copy, and paste below. A simple table with columns <b>Day, Exercise, Sets, Reps, Load, %, RPE</b> works too, as does a CSV file.</p>
+      <details class="help"><summary>How to copy a week from your coach's sheet</summary><p class="note">In your coach's sheet, open the week's tab, select everything (Ctrl/⌘ + A), copy, and paste below. A simple table with columns <b>Day, Exercise, Sets, Reps, Load, %, RPE</b> works too, as does a CSV file.</p></details>
       <textarea id="importText" placeholder="Paste the week here…"></textarea>
       <div class="row">
         <label class="field" for="importName">Week name <input id="importName" class="inp" style="width:130px" placeholder="Week 7"></label>
@@ -533,7 +566,7 @@ details.ota input { min-width: 0; width: 11em; }
       <div class="head"><h2 id="bTitle">Edit week</h2>
         <div class="row"><label class="field" for="bWeek">Week <select id="bWeek"></select></label><button id="bAddWeek">Add week</button><button id="bCopyWeek">Copy week</button></div>
       </div>
-      <p class="note">One line per exercise. Prescription: <b>3x5 @ 160</b>, <b>1x3 @ 80%</b>, <b>4x4 rpe 6</b>, or several joined with commas: <b>1x1 @ 170, 3x3 @ 155 rpe 6</b>. % uses the 1RMs above.</p>
+      <details class="help"><summary>How to write sets (3x5 @ 160 …)</summary><p class="note">One line per exercise. Prescription: <b>3x5 @ 160</b>, <b>1x3 @ 80%</b>, <b>4x4 rpe 6</b>, or several joined with commas: <b>1x1 @ 170, 3x3 @ 155 rpe 6</b>. % uses the 1RMs above.</p></details>
       <label class="field" for="bWeekName">Week name <input id="bWeekName" class="inp" style="width:160px"></label>
       <div id="bDays" style="display:grid;gap:10px"></div>
       <div class="row"><button id="bAddDay">Add day</button><button id="bSave" class="primary">Save week</button><button id="bDelWeek">Delete week</button></div>
@@ -571,6 +604,41 @@ details.ota input { min-width: 0; width: 11em; }
       <div class="head"><h2>Last two weeks</h2></div>
       <div class="tablewrap"><table><thead><tr><th>Day</th><th>Recovery</th><th>HRV ms</th><th>Rest HR</th><th>Sleep</th><th>Strain</th><th>Bar speed</th></tr></thead><tbody id="wRows"></tbody></table></div>
       <p class="note">Bar speed is the average of every rep you logged that day, so compare days with similar loads.</p>
+    </section>
+
+  </div>
+
+
+  <!-- ================= SETTINGS ================= -->
+  <div id="tab-settings" class="wrap" style="padding:0" hidden>
+    <section class="panel">
+      <div class="head"><h2>Puck</h2><span class="which" id="puckInfo">Connect the puck to change these</span></div>
+      <div class="toggles" style="font-size:14px">
+        <label for="tapsOn"><input type="checkbox" id="tapsOn" checked> Double-tap the puck to start / end a set · triple-tap deletes the last rep</label>
+      </div>
+      <div class="row" style="margin-top:8px"><label class="field" for="minRom">Minimum rep height: squat, deadlift and others <select id="minRom"><option value="10">10 cm</option><option value="15">15 cm</option><option value="20">20 cm</option><option value="25">25 cm</option><option value="30">30 cm</option></select></label>
+        <label class="field" for="minRomBench">Bench <select id="minRomBench"><option value="10">10 cm</option><option value="15">15 cm</option><option value="20">20 cm</option><option value="25">25 cm</option><option value="30">30 cm</option></select></label></div>
+      <details class="help"><summary>How rep height, the LED and sleep work</summary><p class="note">Lifts shorter than this aren't counted as reps. The app sets the right one on the puck every time a set starts. A short bench stroke (big arch) can be under 20 cm, so bench defaults to 10 cm; 20 cm suits squat and deadlift and ignores unracking and bumps. Use 10 cm when testing by hand. If a real rep is missed, the app tells you why.</p>
+      <p class="note">The puck's LED and buzzer (if fitted) use the same velocity-loss cut-off as the app (set on the Train screen). Reps lifted while your phone isn't connected are saved on the puck and imported the next time you connect. After 10 minutes still, the puck sleeps; tap it or move the bar to wake it.</p></details>
+      <div class="row"><button id="pkSync">Get saved reps</button><button id="pkFind">Find puck (flash + buzz)</button><button id="pkSleep">Put puck to sleep</button></div>
+      <details class="ota" id="otaBox">
+        <summary>Wireless firmware update</summary>
+        <p class="note">Update the puck from the Arduino IDE without the USB cable. Save your Wi-Fi once, then tap <b>Update mode</b>: the puck joins Wi-Fi for 10 minutes and shows up in Arduino under Tools → Port as a network port called <b>vbt-puck</b>. Pick it and press Upload. Your computer must be on the same Wi-Fi. If an upload fails the puck keeps its old firmware. Needs puck firmware v0.9 (flash that one by USB).</p>
+        <div class="row"><label class="field" for="wSsid">Wi-Fi name <input id="wSsid" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+          <label class="field" for="wPass">Password <input id="wPass" type="password" autocomplete="off"></label>
+          <button id="wSave">Save Wi-Fi to puck</button></div>
+        <div class="row"><button id="otaGo" class="arm">Update mode</button><button id="otaStop">Turn Wi-Fi off</button></div>
+        <p class="note" id="otaStatus" aria-live="polite">The Wi-Fi password is stored on the puck only, not in this app.</p>
+      </details>
+    </section>
+
+    <section class="panel" id="syncBox">
+      <div class="head"><h2>Live link to Google Sheets</h2><span class="which" id="syncStatus">Not linked</span></div>
+      <details class="help"><summary>What this does</summary><p class="note">Paste the web app link and key from the sync script in your sheet. The app then loads your program from the sheet every time you open it, and writes each finished set's velocity and load back into its row.</p></details>
+      <label class="field" for="syncUrl" style="display:grid;gap:4px">Web app link <input id="syncUrl" class="inp" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+      <label class="field" for="syncKey" style="display:grid;gap:4px">Key <input id="syncKey" class="inp" placeholder="vbt-…" autocomplete="off"></label>
+      <div class="toggles"><label for="syncWrite"><input type="checkbox" id="syncWrite" checked> Write velocity and load into the sheet</label></div>
+      <div class="row"><button id="btnLink" class="primary">Link and load program</button><button id="btnRefresh">Refresh now</button><button id="btnUnlink">Unlink</button></div>
     </section>
 
     <section class="panel">
@@ -619,6 +687,8 @@ let programs = [], activePid = null, wk = 0, dy = 0;
 let log = [];               // every recorded set: {id, lift, load, name, plan:{pid,w,d,e,s}|null, target, demo, done, reps:[]}
 let next = null;            // {e, s} planned set that's up next in the open day
 let active = null;          // the set being recorded right now
+let planAll = false, openEx = new Set(), openExKey = "";   // plan: show only the current exercise unless asked
+let rdTab = "path"; try { rdTab = localStorage.getItem("vbt-rd") || "path"; } catch (e) {}
 let sel = null;             // {id, r} rep picked in history
 let pathAll = false;        // bar path: show every rep equally instead of highlighting one
 // one colour per rep, the same in the bar path, its key and the tilt chart (readable on light and dark)
@@ -838,10 +908,10 @@ function endSet(auto) {
 let testLift = "Squat", testEvents = [];
 const TEST_ITEMS = [
   ["conn", "Puck connects", "Tap Connect puck at the top"],
-  ["cmd", "Firmware v0.7 features available", "Needs puck firmware v0.7+"],
+  ["cmd", "Puck accepts commands", "Needs puck firmware v0.7 or newer"],
   ["bat", "Battery reading received", "Arrives right after connecting"],
   ["tap2", "Double-tap detected", "Two firm knocks on the puck, about ¼ s apart"],
-  ["rep", "Rep counted", "Start a set, then lift the bar at least the minimum rep height (Program → Puck)"],
+  ["rep", "Rep counted", "Start a set, then lift the bar at least the minimum rep height (Settings → Puck)"],
   ["phases", "Down · pause · up timing", "Lower, pause briefly, then lift"],
   ["tilt", "Bar tilt measured", "Comes with each rep"],
   ["path", "Bar path received", "Comes a moment after each rep"],
@@ -857,22 +927,28 @@ function testLog(t) {
   testEvents = testEvents.slice(0, 40);
   if (view === "test" && tab === "train") { const b = $("dayView"); if (b) b.innerHTML = testPanel(); }
 }
+let testOpen = {};   // which folded sections of the test panel are open (kept across re-renders)
 function testPanel() {
-  const done = TEST_ITEMS.filter(x => testOk[x[0]]).length;
-  return `<div class="dayhead"><span class="daynum" style="font-size:34px">T</span><div><h3>Test trial</h3><span class="which">${done} of ${TEST_ITEMS.length} checks passed · test sets stay out of your program and history</span></div></div>
-    <div class="row" style="margin-top:6px"><span class="field">Figure for the bar path</span><div class="chips" id="testLift">${["Squat", "Bench", "Deadlift"].map(l => `<button data-tl="${l}" aria-pressed="${l === testLift}">${l}</button>`).join("")}</div></div>
-    <div class="ex"><h3>Checklist</h3><div class="acc">${TEST_ITEMS.map(([k, name, hint]) => `<div><span>${testOk[k] ? '<span class="check">✓</span>' : '<span style="color:var(--muted)">○</span>'} ${esc(name)}</span><span>${testOk[k] ? "passed" : esc(hint)}</span></div>`).join("")}</div></div>
-    <div class="row"><button data-tact="find">Find puck</button><button data-tact="sync">Get saved reps</button><button data-tact="clear">Clear test sets</button><button data-tact="reset">Reset checklist</button></div>
-    <div class="ex"><h3>Raw recording (for tuning)</h3>
+  const done = TEST_ITEMS.filter(x => testOk[x[0]]).length, nx = TEST_ITEMS.find(x => !testOk[x[0]]);
+  const fold = (k, title, body, force) => `<details class="tfold" data-topen="${k}"${testOpen[k] || force ? " open" : ""}><summary>${title}</summary>${body}</details>`;
+  const rawBusy = !!(rawRx || rawFile || rawCfg);
+  return `<div class="dayhead"><span class="daynum" style="font-size:34px">T</span><div><h3>Test trial</h3><span class="which">Try the puck. Nothing here goes into your program or history.</span></div></div>
+    <div class="tprog"><div class="tbar"><i style="width:${Math.round(done / TEST_ITEMS.length * 100)}%"></i></div><span>${done} of ${TEST_ITEMS.length} checks</span></div>
+    ${nx ? `<div class="tnext"><small>Next check</small><b>${esc(nx[1])}</b><span>${esc(nx[2])}</span></div>` : `<div class="tnext ok"><b>✓ All checks passed</b><span>The puck is working end to end.</span></div>`}
+    <div class="tchecks">${TEST_ITEMS.map(([k, name, hint]) => `<span class="${testOk[k] ? "ok" : ""}" title="${esc(hint)}">${testOk[k] ? "✓" : "○"} ${esc(name)}</span>`).join("")}</div>
+    <div class="trow"><span class="field">Lift</span><div class="chips" id="testLift">${["Squat", "Bench", "Deadlift"].map(l => `<button data-tl="${l}" aria-pressed="${l === testLift}">${l}</button>`).join("")}</div></div>
+    <div class="trow"><button data-tact="find">Find puck</button><button data-tact="sync">Get saved reps</button></div>
+    ${fold("raw", `Raw recording <em>for accuracy tuning</em>${rawFile ? ' <i class="tdot"></i>' : ""}`, `
       <label class="toggles" style="font-size:14px"><input type="checkbox" data-tact="rawtoggle"${rawCfg ? " checked" : ""}> Record the puck's raw sensor data for the next set</label>
       <p class="note">${rawRx ? `Receiving from the puck… ${rawRx.lines.length} of ${Math.ceil(rawRx.n / 6)} parts` :
         rawFile ? `Ready: ${rawFile.n} readings (${(rawFile.n / 100).toFixed(0)} s). Save it and send it with the video of the set.` :
         rawCfg ? "On: start a set, lift (film it), end the set, then keep the bar still for a few seconds while the puck sends it." :
-        "Switch on, then do a set while filming it from the side. Needs puck firmware v0.8.3."}</p>
-      ${rawFile ? '<div class="row"><button data-tact="rawsave">Save recording</button><button data-tact="rawcopy">Copy as text</button></div>' : ""}
-    </div>
-    <div class="ex"><h3>Live events</h3><div class="acc" style="max-height:260px;overflow:auto">${testEvents.map(e => `<div><span>${esc(e.t)}</span><span>${e.at}</span></div>`).join("") || '<p class="note">Nothing yet. Connect the puck and try a double-tap.</p>'}</div></div>`;
+        "Switch on, then do a set while filming it from the side. Needs puck firmware v0.8.3 or newer."}</p>
+      ${rawFile ? '<div class="row"><button data-tact="rawsave" class="primary">Save recording</button><button data-tact="rawcopy">Copy as text</button></div>' : ""}`, rawBusy)}
+    ${fold("events", `Live events <em>${testEvents.length}</em>`, `<div class="acc" style="max-height:260px;overflow:auto">${testEvents.map(e => `<div><span>${esc(e.t)}</span><span>${e.at}</span></div>`).join("") || '<p class="note">Nothing yet. Connect the puck and try a double-tap.</p>'}</div>`)}
+    ${fold("reset", "Reset", `<div class="row"><button data-tact="clear">Clear test sets</button><button data-tact="reset">Reset checklist</button></div>`)}`;
 }
+document.addEventListener("toggle", e => { const d = e.target; if (d.dataset && d.dataset.topen) testOpen[d.dataset.topen] = d.open; }, true);
 
 async function sendCmd(t) {
   if (!cmdChar) return false;
@@ -1038,10 +1114,20 @@ function renderTrain(fresh) {
   $("dayChips").innerHTML = w ? w.days.map((d, i) => `<button data-d="${i}" aria-pressed="${i === dy}">D${i + 1}</button>`).join("") : "";
   const d = day(), box = $("dayView");
   if (view === "test") { box.innerHTML = testPanel(); return; }
-  if (!d || view === "free") { box.innerHTML = `<div class="dayhead"><span class="daynum">·</span><div><h3>Free lift</h3><span class="which">Set the load below, tap Start set, and lift. Reps keep logging until you tap End set.</span></div></div>`; return; }
+  if (!d || view === "free") { box.innerHTML = `<div class="dayhead"><span class="daynum">·</span><div><h3>Free lift</h3><span class="which">Set the load above, tap Start set, and lift. Reps keep logging until you tap End set.</span></div></div>`; return; }
   const cut = +$("vlCut").value;
   let h = `<div class="dayhead"><span class="daynum">${dy + 1}</span><div><h3>${esc(d.title || "Day " + (dy + 1))}</h3><span class="which">${esc(w.name)}</span></div></div>`;
+  const key = wk + "-" + dy; if (key !== openExKey) { openExKey = key; openEx = new Set(); }
+  const curE = active && active.plan && active.plan.d === dy && active.plan.w === wk ? active.plan.e : next ? next.e : -1;
+  const showAll = planAll || curE < 0;
+  if (curE >= 0 && d.exercises.length + (d.accessories && d.accessories.length ? 1 : 0) > 1)
+    h += `<div class="planbar"><span class="which">${showAll ? "Whole day" : "Now: " + esc(d.exercises[curE].name)}</span><button class="back" data-planall>${showAll ? "Show less" : "Show whole day"}</button></div>`;
   d.exercises.forEach((ex, e) => {
+    if (!showAll && e !== curE && !openEx.has(e)) {
+      const done = ex.track ? ex.sets.filter((st, s) => { const r = resultFor(e, s); return r && r.done; }).length : 0;
+      h += `<button class="exmini" data-exopen="${e}"><b>${esc(ex.name)}</b><span>${ex.track ? `${done}/${ex.sets.length} sets${done === ex.sets.length ? " ✓" : ""}` : `${ex.sets.length} sets · no puck`}</span><i aria-hidden="true">▸</i></button>`;
+      return;
+    }
     h += `<div class="ex${ex.track ? "" : " off"}"><div class="exhead"><h3>${esc(ex.name)}</h3>${ex.track ? "" : `<span class="which">no puck · ${esc(ex.unit || "")}</span>`}</div>
       <div class="tablewrap"><table><thead><tr><th>Set</th><th>Reps</th><th>Load</th><th>%</th><th>RPE</th><th>Vel m/s</th><th></th></tr></thead><tbody>`;
     ex.sets.forEach((st, s) => {
@@ -1062,7 +1148,8 @@ function renderTrain(fresh) {
     h += `</tbody></table></div></div>`;
   });
   if (d.accessories && d.accessories.length) {
-    h += `<div class="ex off"><h3>Accessories</h3><div class="acc">${d.accessories.map(a => `<div><span>${esc(a.name)}</span><span>${esc(a.sets)} × ${esc(a.reps)}${a.rpe ? " · RPE " + esc(a.rpe) : ""}</span></div>`).join("")}</div></div>`;
+    const acc = `<div class="acc">${d.accessories.map(a => `<div><span>${esc(a.name)}</span><span>${esc(a.sets)} × ${esc(a.reps)}${a.rpe ? " · RPE " + esc(a.rpe) : ""}</span></div>`).join("")}</div>`;
+    h += showAll ? `<div class="ex off"><h3>Accessories</h3>${acc}</div>` : `<details class="ex off exacc"><summary><b>Accessories</b><span>${d.accessories.length} exercises</span></summary>${acc}</details>`;
   }
   if (d.notes) h += `<div class="ex off"><h3>Notes</h3><p class="note">${esc(d.notes)}</p></div>`;
   box.innerHTML = h;
@@ -1086,8 +1173,8 @@ function renderDock() {
     if (document.activeElement !== $("dockLoad")) $("dockLoad").value = ld != null ? ld : "";
   } else {
     const free = !d || isLoose();
-    $("dockLabel").textContent = view === "test" ? "Test trial · nothing here is saved to your program" : free ? "Free lift" : "All barbell sets done";
-    $("dockWhat").textContent = view === "test" ? "Start set, or double-tap the puck" : free ? "Set the load, then Start set" : "Tap any set to redo it";
+    $("dockLabel").textContent = view === "test" ? "Test trial · not saved" : free ? "Free lift" : "All barbell sets done";
+    $("dockWhat").textContent = view === "test" ? "Ready to test" : free ? "Set the load, then Start set" : "Tap any set to redo it";
   }
   b.textContent = "Start set";
 }
@@ -1598,11 +1685,18 @@ function renderHistory() {
 
 function render(fresh) {
   document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === tab));
-  ["train", "program", "history", "whoop"].forEach(t => $("tab-" + t).hidden = t !== tab);
+  if (!["train", "program", "history", "whoop", "settings"].includes(tab)) tab = "train";
+  ["train", "program", "history", "whoop", "settings"].forEach(t => $("tab-" + t).hidden = t !== tab);
+  const last = log.length ? log[log.length - 1] : null;
+  $("dayWrap").classList.toggle("lifting", ((view === "day" || view === "free") && !!(active || sel || (last && Date.now() - last.id < 3 * 3600e3))) || (view === "test" && !!active));
+  $("btnPlanJump").hidden = !$("dayWrap").classList.contains("lifting") || view !== "day";
+  document.querySelectorAll("[data-rd]").forEach(b => b.setAttribute("aria-pressed", b.dataset.rd === rdTab));
+  $("rdPath").hidden = rdTab !== "path"; $("rdTilt").hidden = rdTab !== "tilt";
   if (active && view === "home") view = "day";
   $("homeView").hidden = view !== "home"; $("dayWrap").hidden = view === "home"; $("dock").hidden = tab !== "train" || view === "home";
   if (view === "home") { renderHome(); renderHomeRec(); } else { renderTrain(fresh); renderDock(); renderLive(); }
-  if (tab === "program") { renderProgram(); renderPuck(); }
+  if (tab === "program") renderProgram();
+  if (tab === "settings") { renderProgram(); renderPuck(); renderWhoop(); }
   if (tab === "history") renderHistory();
   if (tab === "whoop") renderWhoop();
   renderRestDock();
@@ -1788,6 +1882,14 @@ function simulate() {
 }
 
 // ---------------- events
+document.addEventListener("click", e => {
+  const rd = e.target.closest("[data-rd]");
+  if (rd) { rdTab = rd.dataset.rd; try { localStorage.setItem("vbt-rd", rdTab); } catch (x) {} render(false); return; }
+  if (e.target.closest("[data-planall]")) { planAll = !planAll; openEx = new Set(); render(false); return; }
+  const xo = e.target.closest("[data-exopen]");
+  if (xo) { openEx.add(+xo.dataset.exopen); render(false); }
+});
+$("btnPlanJump").onclick = () => $("planBox").scrollIntoView({ behavior: "smooth", block: "start" });
 document.querySelector(".tabs").onclick = e => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.tab; save(); render(false); window.scrollTo(0, 0); };
 $("weeks").onclick = e => {
   const n = e.target.closest("[data-hw]"); if (n) { homeWeek = +n.dataset.hw === currentWeek() ? null : +n.dataset.hw; render(false); return; }
