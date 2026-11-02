@@ -365,6 +365,11 @@ tbody tr.rep:hover td, tbody tr.sel td { background: var(--soft); }
   h1 { font-size: 26px; }
 }
 
+
+/* Start-set bar sits in the page, not floating */
+.dock { position: static; inset: auto; z-index: auto; box-shadow: none; backdrop-filter: none; background: var(--panel); border: 1px solid var(--line); padding-bottom: 12px; }
+.dockin { max-width: none; padding-top: 0; }
+.wrap { padding-bottom: 32px; }
 </style>
 </head>
 <body>
@@ -396,6 +401,14 @@ tbody tr.rep:hover td, tbody tr.sel td { background: var(--soft); }
     </section>
 
     <div id="dayWrap" class="wrap" style="padding:0">
+    <div class="dock panel" id="dock">
+  <div class="dockin">
+    <div class="dockinfo"><span id="dockLabel">Up next</span><b id="dockWhat">–</b></div>
+    <label class="field" for="dockLoad">Load <input id="dockLoad" type="number" step="2.5" inputmode="decimal" placeholder="kg"></label>
+    <button id="btnSim" title="Simulate this set without the puck">Simulate</button>
+    <button id="btnArm" class="arm" aria-pressed="false">Start set</button>
+  </div>
+</div>
     <section class="panel">
       <div class="head">
         <button class="back" id="btnBack">← All days</button>
@@ -576,15 +589,6 @@ tbody tr.rep:hover td, tbody tr.sel td { background: var(--soft); }
     </section>
   </div>
 </main>
-
-<div class="dock gut" id="dock">
-  <div class="dockin">
-    <div class="dockinfo"><span id="dockLabel">Up next</span><b id="dockWhat">–</b></div>
-    <label class="field" for="dockLoad">Load <input id="dockLoad" type="number" step="2.5" inputmode="decimal" placeholder="kg"></label>
-    <button id="btnSim" title="Simulate this set without the puck">Simulate</button>
-    <button id="btnArm" class="arm" aria-pressed="false">Start set</button>
-  </div>
-</div>
 
 <script>
 const SVC = "6e7c0001-5a1d-4c2b-9f3e-1b2a3c4d5e6f";
