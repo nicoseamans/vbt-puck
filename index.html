@@ -370,6 +370,10 @@ tbody tr.rep:hover td, tbody tr.sel td { background: var(--soft); }
 .dock { position: static; inset: auto; z-index: auto; box-shadow: none; backdrop-filter: none; background: var(--panel); border: 1px solid var(--line); padding-bottom: 12px; }
 .dockin { max-width: none; padding-top: 0; }
 .wrap { padding-bottom: 32px; }
+details.ota { border-top: 1px solid var(--line); padding-top: 10px; }
+details.ota > summary { cursor: pointer; font-weight: 700; padding: 4px 0; }
+details.ota[open] { display: grid; gap: 10px; }
+details.ota input { min-width: 0; width: 11em; }
 </style>
 </head>
 <body>
@@ -481,6 +485,15 @@ tbody tr.rep:hover td, tbody tr.sel td { background: var(--soft); }
       <p class="note">Lifts shorter than this aren't counted as reps. The app sets the right one on the puck every time a set starts. A short bench stroke (big arch) can be under 20 cm, so bench defaults to 10 cm; 20 cm suits squat and deadlift and ignores unracking and bumps. Use 10 cm when testing by hand. If a real rep is missed, the app tells you why.</p>
       <p class="note">The puck's LED and buzzer (if fitted) use the same velocity-loss cut-off as the app (set on the Train screen). Reps lifted while your phone isn't connected are saved on the puck and imported the next time you connect. After 10 minutes still, the puck sleeps; tap it or move the bar to wake it.</p>
       <div class="row"><button id="pkSync">Get saved reps</button><button id="pkFind">Find puck (flash + buzz)</button><button id="pkSleep">Put puck to sleep</button></div>
+      <details class="ota" id="otaBox">
+        <summary>Wireless firmware update</summary>
+        <p class="note">Update the puck from the Arduino IDE without the USB cable. Save your Wi-Fi once, then tap <b>Update mode</b>: the puck joins Wi-Fi for 10 minutes and shows up in Arduino under Tools → Port as a network port called <b>vbt-puck</b>. Pick it and press Upload. Your computer must be on the same Wi-Fi. If an upload fails the puck keeps its old firmware. Needs puck firmware v0.9 (flash that one by USB).</p>
+        <div class="row"><label class="field" for="wSsid">Wi-Fi name <input id="wSsid" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+          <label class="field" for="wPass">Password <input id="wPass" type="password" autocomplete="off"></label>
+          <button id="wSave">Save Wi-Fi to puck</button></div>
+        <div class="row"><button id="otaGo" class="arm">Update mode</button><button id="otaStop">Turn Wi-Fi off</button></div>
+        <p class="note" id="otaStatus" aria-live="polite">The Wi-Fi password is stored on the puck only, not in this app.</p>
+      </details>
     </section>
     <section class="panel">
       <div class="head"><h2>Programs</h2><button id="btnNewProg">New program</button></div>
@@ -948,6 +961,7 @@ function handleLine(line, demo = false) {
   if (/^TAP 3/.test(line)) { tapUndo(); return; }
   if (/^SLEEP/.test(line)) { puckAsleep = true; testLog("Puck went to sleep (no movement for a while). Move the bar to wake it; the app reconnects by itself."); setConn("Puck asleep · move the bar to wake it", false); return; }
   if (/^CLEARED/.test(line)) return;
+  if (/^(OTA|WIFI|VER) /.test(line)) { otaLine(line); return; }
   m = line.match(/^RAW (\d+) (\d+) ([\d.]+) (\d) (\S+)/);
   if (m) { rawRx = { n: +m[1], head: line, lines: [] }; testLog(`Receiving raw recording: ${m[1]} readings`); return; }
   if (/^W \d+ /.test(line)) { if (rawRx) { rawRx.lines.push(line); if (rawRx.lines.length % 40 === 0) testLog(`Receiving… ${rawRx.lines.length} parts`); } return; }
@@ -1541,8 +1555,8 @@ function renderPuck() {
   $("minRom").value = String(puckCfg.rom || 20);
   $("minRomBench").value = String(puckCfg.romBench || 10);
   const on = !!(device && device.gatt && device.gatt.connected);
-  $("puckInfo").textContent = !on ? "Connect the puck to change these" : cmdChar ? "Connected" : "Connected · update the puck to firmware v0.7 for these";
-  ["pkSync", "pkFind", "pkSleep"].forEach(id => $(id).disabled = !(on && cmdChar));
+  $("puckInfo").textContent = !on ? "Connect the puck to change these" : cmdChar ? "Connected" + (puckVer ? " · firmware " + puckVer : "") : "Connected · update the puck to firmware v0.7 for these";
+  ["pkSync", "pkFind", "pkSleep", "wSave", "otaGo", "otaStop"].forEach(id => $(id).disabled = !(on && cmdChar));
 }
 // ---------------- render: history
 function renderPastWeeks() {
@@ -1729,7 +1743,7 @@ async function openGatt() {
   try { cmdChar = await svc.getCharacteristic(CMD); } catch (e) { cmdChar = null; }   // older firmware has no commands
   setConn("Connected", true); $("btnConnect").textContent = "Disconnect";
   testMark("conn"); if (cmdChar) testMark("cmd"); else testLog("Old firmware: no tap / offline features");
-  if (cmdChar) { await sendCmd("CUT " + $("vlCut").value); await sendCmd("TAPS " + (puckCfg.taps ? 1 : 0)); await sendCmd("ROM " + (puckCfg.rom || 20)); await sendCmd("SYNC"); }
+  if (cmdChar) { await sendCmd("CUT " + $("vlCut").value); await sendCmd("TAPS " + (puckCfg.taps ? 1 : 0)); await sendCmd("ROM " + (puckCfg.rom || 20)); await sendCmd("SYNC"); await sendCmd("VER"); }
   renderPuck();
 }
 function setConn(t, on) { const c = $("conn"); c.textContent = t; c.className = "pill" + (on ? " on" : ""); }
@@ -1886,6 +1900,34 @@ $("minRomBench").onchange = e => { puckCfg.romBench = +e.target.value; save(); i
 $("pkSync").onclick = () => sendCmd("SYNC");
 $("pkFind").onclick = () => sendCmd("LED");
 $("pkSleep").onclick = () => sendCmd("SLEEP");
+// ---------------- wireless firmware update (puck v0.9+)
+let puckVer = "";
+function otaSay(t, kind) { $("otaStatus").textContent = t; if (kind) msg(t, kind); }
+function otaLine(line) {
+  let m;
+  if ((m = line.match(/^VER (\S+)/))) { puckVer = m[1]; renderPuck(); return; }
+  if (/^WIFI SAVED/.test(line)) return otaSay("Wi-Fi saved on the puck. Tap Update mode when you're at your computer.", "good");
+  if (/^OTA JOINING/.test(line)) return otaSay("Puck is joining Wi-Fi…");
+  if ((m = line.match(/^OTA READY (\S+)/))) { $("otaBox").open = true; return otaSay(`Ready for 10 minutes at ${m[1]}. In Arduino: Tools → Port → vbt-puck (network), then Upload. The puck restarts by itself when it's done and the app reconnects.`, "good"); }
+  if (/^OTA NOWIFI/.test(line)) return otaSay("Save your Wi-Fi name and password to the puck first.", true);
+  if (/^OTA WIFIFAIL/.test(line)) return otaSay("The puck couldn't join that Wi-Fi. Check the name and password (it needs a 2.4 GHz network) and save again.", true);
+  if (/^OTA BUSY/.test(line)) return otaSay("Update mode is already on.");
+  if (/^OTA OFF/.test(line)) return otaSay("Update mode is off; Wi-Fi is off.");
+  if ((m = line.match(/^OTA FAIL (\d+)/))) return otaSay(`The upload failed (error ${m[1]}). The puck kept its old firmware; try Upload again.`, true);
+}
+$("wSsid").value = puckCfg.ssid || "";
+$("wSave").onclick = async () => {
+  const ss = $("wSsid").value.trim(), pw = $("wPass").value;
+  if (!ss) return otaSay("Type your Wi-Fi name first.", true);
+  if (ss.length > 32 || pw.length > 63) return otaSay("That name or password is too long for Wi-Fi.", true);
+  puckCfg.ssid = ss; save();
+  const ok = await sendCmd("WPASS " + pw) && await sendCmd("WSSID " + ss);
+  $("wPass").value = "";
+  if (!ok) otaSay("Couldn't reach the puck. Connect it and try again.", true);
+};
+$("otaGo").onclick = async () => { if (await sendCmd("OTA 1")) otaSay("Asking the puck to join Wi-Fi…"); else otaSay("Connect the puck first.", true); };
+$("otaStop").onclick = () => sendCmd("OTA 0");
+
 $("vlCut").addEventListener("change", () => sendCmd("CUT " + $("vlCut").value));
 $("btnHr").onclick = () => { if (hr.dev && hr.dev.gatt.connected) { const d = hr.dev; hr.dev = null; d.gatt.disconnect(); hr.now = null; $("btnHr").textContent = "Connect WHOOP"; $("hrPill").hidden = true; render(false); } else connectHr(); };
 $("restGo").onclick = () => { try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch (e) {} startRest(); };
