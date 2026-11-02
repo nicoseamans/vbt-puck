@@ -94,7 +94,18 @@ tr.done td.vel { color: var(--ink); }
 .check { font-size: 15px; color: var(--ok); }
 .acc { font-size: 13.5px; display: grid; gap: 2px; }
 .acc div { display: flex; justify-content: space-between; gap: 10px; border-top: 1px dashed var(--line); padding: 5px 0; }
-.acc span:last-child { font-family: var(--mono); color: var(--muted); white-space: nowrap; }
+.acc span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.repkey { display: grid; gap: 6px; }
+.repkey .keyhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.repkey .chips { display: flex; flex-wrap: nowrap; flex: none; }
+.repkey .chips button { padding: 6px 11px; font-size: 13px; }
+.repkey table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.repkey th { text-align: left; font: 600 11px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; background: none; }
+.repkey td { padding: 6px; border-top: 1px solid var(--line); cursor: pointer; }
+.repkey tr.on td { background: var(--soft); font-weight: 700; }
+.repkey .sw { display: inline-block; width: 14px; height: 4px; border-radius: 2px; vertical-align: middle; margin-right: 7px; }
+#tiltReps { width: 100%; display: block; }
+.acc span:last-child { font-family: var(--mono); color: var(--muted); text-align: right; flex: 0 1 auto; max-width: 58%; overflow-wrap: anywhere; }
 
 /* home: pick a day */
 .weekgrp { display: grid; gap: 8px; }
@@ -428,9 +439,12 @@ tbody tr.rep:hover td, tbody tr.sel td { background: var(--soft); }
         <div class="head"><h2>Bar path · side view</h2><span class="which" id="pathWhich"></span></div>
         <svg id="path" height="300" role="img" aria-label="Side view of the bar path for the selected rep"></svg>
         <p class="note" id="phaseLine"></p>
+        <div class="repkey" id="repKey"></div>
         <div class="head" style="margin-top:4px"><h2>Bar tilt · front view</h2><button class="back" id="tiltSwap" style="padding:0">Swap left / right</button></div>
         <svg id="tiltView" height="160" role="img" aria-label="Front view of the barbell showing how far it tipped"></svg>
         <p class="note" id="tiltLine">Tilt is how far the bar tips sideways, one end lower than the other, like a see-saw. Level is 0°.</p>
+        <div class="head"><h2>Tilt by rep</h2><span class="which">tap a bar to see that rep</span></div>
+        <svg id="tiltReps" height="130" role="img" aria-label="Peak bar tilt for every rep of the set"></svg>
         <div class="toggles">
           <label for="flip"><input type="checkbox" id="flip"> Flip front/back</label>
           <label for="closeLoop"><input type="checkbox" id="closeLoop" checked> Lockout over start point</label>
@@ -589,6 +603,10 @@ let log = [];               // every recorded set: {id, lift, load, name, plan:{
 let next = null;            // {e, s} planned set that's up next in the open day
 let active = null;          // the set being recorded right now
 let sel = null;             // {id, r} rep picked in history
+let pathAll = false;        // bar path: show every rep equally instead of highlighting one
+// one colour per rep, the same in the bar path, its key and the tilt chart (readable on light and dark)
+const REP_COLORS = ["#4e9be6", "#f28e2b", "#3fb36b", "#e15759", "#a77bd0", "#e8c33c", "#5fc4bd", "#ff8fb0", "#b08a6b", "#9aa5b1"];
+const repCol = r => REP_COLORS[(r.r - 1) % REP_COLORS.length];
 let pendingPath = null, ignoreP = false, lastRepSet = null;
 let device = null, tab = "train", view = "home", homeWeek = null;
 let sync = { url: "", key: "", write: true, last: null }, queue = [], syncBusy = false, lastPull = 0;
@@ -980,7 +998,7 @@ function handleLine(line, demo = false) {
   const set = active || graceSet; if (demo) set.demo = true;
   set.reps.push({ r: set.reps.length + 1, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), ms: Date.now(),
                   at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
-  recalc(set); lastRepSet = set; set.lastRepAt = Date.now();
+  recalc(set); lastRepSet = set; set.lastRepAt = Date.now(); if (sel && sel.id === set.id) sel = null;
   { const r = set.reps[set.reps.length - 1]; testMark("rep"); if (r.tut != null) testMark("phases"); if (r.tilt != null) testMark("tilt");
     testLog(`Rep ${r.r}: ${r.mv.toFixed(2)} m/s${r.tut != null ? ` · down ${r.ecc.toFixed(1)} s, pause ${r.pause.toFixed(1)} s` : ""}${r.tilt != null ? ` · tilt ${Math.abs(r.tilt).toFixed(1)}°` : ""}`); }
   if (late) {
@@ -1210,6 +1228,48 @@ function drawTilt(rep, frac) {
   svg.innerHTML = s;
 }
 
+// Key for the bar path: one row per rep (colour, speed, drift, tilt). Tap a row to focus that rep.
+function renderRepKey(set, cur) {
+  const box = $("repKey"); if (!box) return;
+  const reps = set ? set.reps : [];
+  if (reps.length < 2) { box.innerHTML = ""; drawTiltReps(set, cur); return; }
+  box.innerHTML = `<div class="keyhead"><span class="which">${reps.length} reps · tap a row</span>
+      <div class="chips"><button data-pall="0" aria-pressed="${!pathAll}">One rep</button><button data-pall="1" aria-pressed="${pathAll}">All reps</button></div></div>
+    <table><thead><tr><th>Rep</th><th>m/s</th><th>Drift</th><th>Tilt</th><th>Down · up</th></tr></thead><tbody>${reps.map((r, j) => {
+      const dd = drift(shownPath(r, set.lift)), dx = dd != null ? dd : (r.dx != null ? r.dx : null);
+      return `<tr data-key="${set.id},${j}" class="${r === cur && !pathAll ? "on" : ""}"><td><span class="sw" style="background:${repCol(r)}"></span>R${r.r}</td>
+        <td>${r.mv.toFixed(2)}</td><td>${dx != null ? (dx / 10).toFixed(1) + " cm" : "–"}</td><td>${r.tilt != null ? Math.abs(r.tilt).toFixed(1) + "°" : "–"}</td>
+        <td>${r.ecc != null ? r.ecc.toFixed(1) + " · " + r.t.toFixed(1) + " s" : r.t.toFixed(1) + " s"}</td></tr>`; }).join("")}</tbody></table>`;
+  drawTiltReps(set, cur);
+}
+// Peak tilt of every rep, signed: up = the right end dropped, down = the left end dropped
+function drawTiltReps(set, cur) {
+  const svg = $("tiltReps"); if (!svg) return;
+  const reps = set ? set.reps.filter(r => r.tilt != null) : [];
+  const W = svg.clientWidth || 320, H = 130, ink = tok("--muted");
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  if (!reps.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="12" fill="${ink}">No tilt yet (needs puck firmware v0.7)</text>`; return; }
+  const sg = puckCfg.tiltFlip ? -1 : 1, mx = Math.max(2, ...reps.map(r => Math.abs(r.tilt))) * 1.15;
+  const mid = H / 2 - 6, pl = 46, n = Math.max(reps.length, 5), slot = (W - pl - 6) / n, bw = Math.min(30, slot * 0.6), y = v => mid - v / mx * (H / 2 - 24);
+  let s = `<line x1="${pl}" x2="${W - 4}" y1="${mid}" y2="${mid}" stroke="${tok("--line")}" stroke-width="1.5"/>`;
+  s += `<text x="${pl - 6}" y="16" text-anchor="end" font-size="10" fill="${ink}">right ↓</text><text x="${pl - 6}" y="${H - 18}" text-anchor="end" font-size="10" fill="${ink}">left ↓</text>`;
+  reps.forEach((r, i) => {
+    const v = r.tilt * sg, x = pl + slot * i + (slot - bw) / 2, y0 = Math.min(mid, y(v)), h = Math.max(2, Math.abs(y(v) - mid)), on = r === cur && !pathAll;
+    s += `<g data-tkey="${set.id},${set.reps.indexOf(r)}" style="cursor:pointer"><rect x="${x - 4}" y="0" width="${bw + 8}" height="${H}" fill="transparent"/>
+      <rect x="${x}" y="${y0}" width="${bw}" height="${h}" rx="3" fill="${repCol(r)}" opacity="${on || pathAll || !cur ? 1 : 0.55}"${on ? ` stroke="${tok("--ink")}" stroke-width="2"` : ""}/>
+      <text x="${x + bw / 2}" y="${v >= 0 ? y0 - 4 : y0 + h + 12}" text-anchor="middle" font-size="10.5" font-weight="600" fill="${tok("--ink")}">${Math.abs(r.tilt).toFixed(1)}°</text>
+      <text x="${x + bw / 2}" y="${H - 3}" text-anchor="middle" font-size="10" fill="${ink}">R${r.r}</text></g>`;
+  });
+  svg.innerHTML = s;
+}
+document.addEventListener("click", e => {
+  const pa = e.target.closest("[data-pall]");
+  if (pa) { pathAll = pa.dataset.pall === "1"; render(false); return; }
+  const k = e.target.closest("[data-key],[data-tkey]"); if (!k) return;
+  const [id, r] = (k.dataset.key || k.dataset.tkey).split(",").map(Number);
+  sel = { id, r }; pathAll = false; render(false);
+});
+
 let pathAnim = null;
 function drawPath(set, selRep) {
   const svg = $("path"), W = svg.clientWidth || 320, H = 300, pad = 14, ink = tok("--muted"), line = tok("--line");
@@ -1217,10 +1277,10 @@ function drawPath(set, selRep) {
   if (pathAnim) { cancelAnimationFrame(pathAnim); pathAnim = null; }
   const paths = set ? set.reps.map(r => ({ r, p: shownPath(r, set.lift) })).filter(o => o.p) : [];
   $("pathWhich").textContent = selRep ? `Rep ${selRep.r}` : "";
-  if (!paths.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">${set && set.reps.length ? "No path for this rep (needs puck firmware v0.7)" : "No reps yet"}</text>`; $("phaseLine").textContent = ""; drawTilt(selRep, 1); return; }
+  if (!paths.length) { svg.innerHTML = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-size="13" fill="${ink}">${set && set.reps.length ? "No path for this rep (needs puck firmware v0.7)" : "No reps yet"}</text>`; $("phaseLine").textContent = ""; drawTilt(selRep, 1); renderRepKey(set, selRep); return; }
   const cur = paths.find(o => o.r === selRep) || paths[paths.length - 1];
   { const r = cur.r; $("phaseLine").textContent = r.tut != null ? `Rep ${r.r}: down ${r.ecc.toFixed(1)} s (${(r.ev || 0).toFixed(2)} m/s) · pause ${r.pause.toFixed(1)} s · up ${r.t.toFixed(1)} s · ${r.tut.toFixed(1)} s under tension` : ""; }
-  const close = $("pathZoom").checked, kind = liftKind(set, cur.p), sc = scene(kind, cur.p);
+  const close = $("pathZoom").checked || pathAll, kind = liftKind(set, cur.p), sc = scene(kind, cur.p);
   let xmin, xmax, ymin, ymax;
   if (close) {
     xmin = -60; xmax = 60; ymin = 0; ymax = 0;
@@ -1243,13 +1303,15 @@ function drawPath(set, selRep) {
     s += `<text x="${W - 8}" y="16" text-anchor="end" font-size="11" fill="${ink}">front →</text>`;
   }
   const d = p => p.map(([x, y], i) => `${i ? "L" : "M"}${X(x).toFixed(1)} ${Y(y).toFixed(1)}`).join(" ");
-  paths.filter(o => o !== cur).forEach(o => s += `<path d="${d(o.p)}" fill="none" stroke="${tok("--path-old")}" stroke-width="2"/>`);
+  // every rep in its own colour; the selected rep on top, thicker, with its lowering dashed
+  paths.filter(o => o !== cur).forEach(o => s += `<path d="${d(o.p)}" fill="none" stroke="${repCol(o.r)}" stroke-width="${pathAll ? 3 : 2}" opacity="${pathAll ? 0.95 : 0.5}" stroke-linecap="round" stroke-linejoin="round"/>`);
   const p = cur.p; let lo = 0; p.forEach(([, y], i) => { if (y < p[lo][1]) lo = i; });
-  s += `<path d="${d(p.slice(0, lo + 1))}" fill="none" stroke="${ink}" stroke-width="2.5" stroke-dasharray="5 4"/>`;
-  s += `<path d="${d(p.slice(lo))}" fill="none" stroke="${tok(zone(cur.r.mv)[0])}" stroke-width="3.5" stroke-linecap="round"/>`;
+  s += `<path d="${d(p.slice(0, lo + 1))}" fill="none" stroke="${repCol(cur.r)}" stroke-width="${pathAll ? 3 : 2.5}" stroke-dasharray="${pathAll ? "none" : "5 4"}"/>`;
+  s += `<path d="${d(p.slice(lo))}" fill="none" stroke="${repCol(cur.r)}" stroke-width="${pathAll ? 3 : 4}" stroke-linecap="round"/>`;
   if (cur.r.pause != null && cur.r.pause >= 0.1 && lo > 0) s += `<text x="${X(p[lo][0]) + 10}" y="${Y(p[lo][1]) + 4}" font-size="11" font-weight="600" fill="${ink}">${cur.r.pause.toFixed(1)} s pause</text>`;
   s += `<g id="figure"></g>`;
-  svg.innerHTML = s + `<text x="8" y="${H - 8}" font-size="10.5" fill="${ink}">dashed = down · solid = up${close ? "" : " · figure is to scale, not you"}</text>`;
+  svg.innerHTML = s + `<text x="8" y="${H - 8}" font-size="10.5" fill="${ink}">${pathAll ? "all reps" : `rep ${cur.r.r}: dashed = down · solid = up`}${close ? "" : " · figure is to scale, not you"}</text>`;
+  renderRepKey(set, cur.r);
   const g = svg.querySelector("#figure"), body = tok("--muted"), plate = tok("--ink");
   const frame = (bx, by) => {
     let h = "";
