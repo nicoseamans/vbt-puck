@@ -289,7 +289,7 @@ pre { max-height: 150px; overflow: auto; font: 11.5px/1.5 var(--mono); color: va
       </div>
       <div class="row" style="margin-top:8px"><label class="field" for="minRom">Minimum rep height: squat, deadlift and others <select id="minRom"><option value="10">10 cm</option><option value="15">15 cm</option><option value="20">20 cm</option><option value="25">25 cm</option><option value="30">30 cm</option></select></label>
         <label class="field" for="minRomBench">Bench <select id="minRomBench"><option value="10">10 cm</option><option value="15">15 cm</option><option value="20">20 cm</option><option value="25">25 cm</option><option value="30">30 cm</option></select></label></div>
-      <p class="note">Lifts shorter than this aren't counted as reps. The app sets the right one on the puck every time a set starts. A short bench stroke (big arch, long arms) needs 15 cm; 20 cm suits squat and deadlift and ignores unracking and bumps. Use 10 cm when testing by hand. If a real rep is missed, the app tells you why.</p>
+      <p class="note">Lifts shorter than this aren't counted as reps. The app sets the right one on the puck every time a set starts. A short bench stroke (big arch) can be under 20 cm, so bench defaults to 10 cm; 20 cm suits squat and deadlift and ignores unracking and bumps. Use 10 cm when testing by hand. If a real rep is missed, the app tells you why.</p>
       <p class="note">The puck's LED and buzzer (if fitted) use the same velocity-loss cut-off as the app (set on the Train screen). Reps lifted while your phone isn't connected are saved on the puck and imported the next time you connect. After 10 minutes still, the puck sleeps; tap it or move the bar to wake it.</p>
       <div class="row"><button id="pkSync">Get saved reps</button><button id="pkFind">Find puck (flash + buzz)</button><button id="pkSleep">Put puck to sleep</button></div>
     </section>
@@ -430,8 +430,8 @@ let sel = null;             // {id, r} rep picked in history
 let pendingPath = null, ignoreP = false, lastRepSet = null;
 let device = null, tab = "train", view = "home", homeWeek = null;
 let sync = { url: "", key: "", write: true, last: null }, queue = [], syncBusy = false, lastPull = 0;
-let puckCfg = { taps: true, rom: 20, romBench: 15 };
-const romFor = lift => lift === "Bench" ? (puckCfg.romBench || 15) : (puckCfg.rom || 20);
+let puckCfg = { taps: true, rom: 20, romBench: 10 };
+const romFor = lift => lift === "Bench" ? (puckCfg.romBench || 10) : (puckCfg.rom || 20);
 let whoop = { url: "", key: "", data: null, at: null }, restCfg = { hr: 110, min: 180, beep: true };
 let hr = { dev: null, now: null, hist: [] }, rest = { start: null, readyAt: null }, restTick = null, audio = null;
 
@@ -604,7 +604,9 @@ function startSet() {
   log.push(set); active = set; sel = null; graceSet = null;
   msg(device && device.gatt && device.gatt.connected ? "" : "The puck isn't connected right now. Lift anyway: it saves the reps and they'll be added to this set when it reconnects.", !(device && device.gatt && device.gatt.connected));
   // minimum rep height for this lift, then the puck forgets the racking / plate-change / walk-out movement
-  sendCmd("ROM " + romFor(set.lift)).then(() => sendCmd("ARM"));
+  // bench / squat reps start with a lowering, so the puck ignores the lift-off from the hooks
+  const needEcc = (set.lift === "Bench" || set.lift === "Squat") && (set.plan || set.test) ? 1 : 0;
+  sendCmd("ROM " + romFor(set.lift)).then(() => sendCmd("ECC " + needEcc)).then(() => sendCmd("ARM"));
   if (hr.now) { set.hrStart = hr.now; set.hrPeak = hr.now; }
   stopRest(); save(); render(false);
 }
@@ -693,28 +695,32 @@ function tapUndo() {
 function importOffline() {
   const o = offline; offline = null;
   if (!o || !o.lines.length) { sendCmd("TIME " + Math.floor(Date.now() / 1000)); return; }
-  const groups = new Map(), touched = new Set();
+  const groups = new Map(), touched = new Set(); let dup = 0, into = 0;
+  // the puck keeps a copy of every rep, so skip the ones the app already received live
+  // (a saved copy is the exact same line, so every number matches exactly)
+  const seen = (when, mv, rom, t) => log.some(s => s.reps.some(r => r.ms && Math.abs(r.ms - when) < 4000 && Math.abs(r.mv - mv) < 0.004 && Math.abs(r.rom - rom) < 0.004 && Math.abs(r.t - t) < 0.004));
   // the set you had running (or had just ended) when the rep happened
   const owner = when => [...log, ...ghostSets].find(s => !s.offline && s.date && Date.parse(s.date) - 5000 <= when &&
       when <= (s.endedAt ? Date.parse(s.endedAt) + 10000 : (s === active ? Date.now() : Date.parse(s.date) + 600000)));
   o.lines.forEach(({ ts, line }) => {
     const m = line.match(/^S(\d+)\s+R(\d+)\s+MV\s+([-\d.]+)\s+PV\s+([-\d.]+)\s+ROM\s+([-\d.]+)\s+T\s+([-\d.]+)/); if (!m) return;
     const when = o.base - (o.now - ts) * 1000, key = m[1] + ":" + Math.floor(when / 3600000);
+    if (seen(when, +m[3], +m[5], +m[6])) { dup++; return; }
     const own = owner(when);
     if (own) {
       if (!log.includes(own)) { log.push(own); ghostSets = ghostSets.filter(g => g !== own); }
-      own.reps.push({ r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), offline: true,
+      into++;
+      own.reps.push({ r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), offline: true, ms: when,
         at: new Date(when).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
       touched.add(own); return;
     }
     if (!groups.has(key)) groups.set(key, { id: Math.round(when) + groups.size, lift: "Squat", name: "Offline set", label: "", load: 0, plan: null, target: 0, offline: true,
       date: new Date(when).toISOString(), demo: false, done: true, reps: [] });
-    groups.get(key).reps.push({ r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line),
+    groups.get(key).reps.push({ r: 0, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), ms: when,
       at: new Date(when).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
   });
   let n = 0; groups.forEach(g => { recalc(g); log.push(g); n += g.reps.length; });
-  let into = 0;
-  touched.forEach(set => { recalc(set); into += set.reps.filter(r => r.offline).length;
+  touched.forEach(set => { set.reps.sort((a, b) => (a.ms || 0) - (b.ms || 0)); recalc(set);
     if (set !== active && !set.done) { set.done = true; if (set.plan) pickNext({ e: set.plan.e, s: set.plan.s }); }
     if (set.plan) queueVel(set); });
   n += into;
@@ -722,8 +728,10 @@ function importOffline() {
   log.sort((a, b) => a.date < b.date ? -1 : 1);
   save(); render(false);
   sendCmd("CLEAR").then(() => sendCmd("TIME " + Math.floor(Date.now() / 1000)));
-  msg(`Imported ${n} rep${n === 1 ? "" : "s"} the puck saved while your phone wasn't connected.` + (into ? ` ${into} went into the set you were doing at the time.` : "") + (n > into ? ` The rest are in History as "Offline set".` : ""), "good");
-  testLog(`Imported ${n} saved rep${n === 1 ? "" : "s"}` + (into ? ` (${into} into your set)` : ""));
+  if (n) {
+    msg(`Added ${n} rep${n === 1 ? "" : "s"} the app missed (it was in the background or not connected).` + (into ? ` ${into} went into the set you were doing at the time.` : "") + (n > into ? ` The rest are in History as "Offline set".` : ""), "good");
+    testLog(`Added ${n} saved rep${n === 1 ? "" : "s"}` + (into ? ` (${into} into your set)` : "") + (dup ? `, ${dup} already here` : ""));
+  }
 }
 
 function handleLine(line, demo = false) {
@@ -740,7 +748,8 @@ function handleLine(line, demo = false) {
     const why = m[1] === "short" ? `only ${cm} cm of bar travel (minimum ${min} cm)` :
                 m[1] === "slow" ? `too slow to be a rep (${(+m[3]).toFixed(2)} m/s)` :
                 m[1] === "sideways" ? `bar moved ${Math.round(+m[4] * 100)} cm sideways for ${cm} cm up` :
-                m[1] === "long" ? "the movement lasted too long without a pause" : m[1];
+                m[1] === "long" ? "the movement lasted too long without a pause" :
+                m[1] === "liftoff" ? `lifted ${cm} cm with no lowering first (unracking, not a rep)` : m[1];
     testLog("Not counted: " + why);
     if (active) msg(`Movement not counted: ${why}.` + (m[1] === "short" ? " Lower the minimum rep height in Program → Puck if that was a real rep." : ""));
     return;
@@ -771,7 +780,7 @@ function handleLine(line, demo = false) {
   }
   ignoreP = false;
   const set = active || graceSet; if (demo) set.demo = true;
-  set.reps.push({ r: set.reps.length + 1, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line),
+  set.reps.push({ r: set.reps.length + 1, mv: +m[3], pv: +m[4], rom: +m[5], t: +m[6], path: null, ...repExtras(line), ms: Date.now(),
                   at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }) });
   recalc(set); lastRepSet = set; set.lastRepAt = Date.now();
   { const r = set.reps[set.reps.length - 1]; testMark("rep"); if (r.tut != null) testMark("phases"); if (r.tilt != null) testMark("tilt");
@@ -1266,7 +1275,7 @@ async function flushQueue() {
 function renderPuck() {
   $("tapsOn").checked = puckCfg.taps !== false;
   $("minRom").value = String(puckCfg.rom || 20);
-  $("minRomBench").value = String(puckCfg.romBench || 15);
+  $("minRomBench").value = String(puckCfg.romBench || 10);
   const on = !!(device && device.gatt && device.gatt.connected);
   $("puckInfo").textContent = !on ? "Connect the puck to change these" : cmdChar ? "Connected" : "Connected · update the puck to firmware v0.7 for these";
   ["pkSync", "pkFind", "pkSleep"].forEach(id => $(id).disabled = !(on && cmdChar));
@@ -1461,6 +1470,11 @@ async function openGatt() {
 }
 function setConn(t, on) { const c = $("conn"); c.textContent = t; c.className = "pill" + (on ? " on" : ""); }
 let puckAsleep = false;
+// iPhone pauses the app while you're in another one (e.g. filming with the camera). When you come
+// back, ask the puck for its saved copy of the reps; ones already here are skipped.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && cmdChar && device && device.gatt.connected) setTimeout(() => sendCmd("SYNC"), 400);
+});
 async function onDisconnect() {
   cmdChar = null; $("btnConnect").textContent = "Disconnect";
   if (active) msg("The puck disconnected during the set. Keep lifting: it saves the reps and they'll be added here when it reconnects.", true);
