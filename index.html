@@ -5,11 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>VBT Puck Logger</title>
 <meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#0b0d0f">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
-<meta name="theme-color" content="#16181a">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
 /* Layout: sticky status bar + tabs. Train = day plan (coach-sheet table with a live VEL column), live readout, charts, and a sticky "up next" bar. Program = weeks, maxes, import, builder. History = every set logged. */
 :root {
@@ -476,24 +475,126 @@ details.tfold[open] { display: grid; gap: 10px; }
 .edtop .field { min-width: 0; } .edtop .field input { width: 100%; }
 .edexh .ib { flex: none; }
 #bDays { min-width: 0; }
+.steps { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+
+/* ================= v3 design: clean dark, Whoop / Strava style ================= */
+:root, :root[data-theme="dark"], :root:not([data-theme="light"]) {
+  --bg: #0b0d0f; --panel: #15181b; --soft: #1e2226; --line: #262b30; --ink: #f4f5f6; --muted: #8b949b;
+  --accent: #2ee59d; --accent-ink: #04140c; --warn: #ff5a5f; --ok: #2ee59d; --hl: #1f2a24;
+  --z-fast: #4aa8ff; --z-mid: #ffc940; --z-slow: #2ee59d; --path: #f4f5f6; --path-old: #3a4148;
+  --display: -apple-system, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --body: -apple-system, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+body { background: var(--bg); font: 15px/1.45 var(--body); -webkit-font-smoothing: antialiased; }
+body::before { background: var(--bg); }
+/* header: compact, no border */
+header { background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-bottom: 0; }
+header .bar { padding-block: 12px 10px; gap: 8px; flex-wrap: nowrap; }
+header h1 { font: 800 21px/1 var(--display); letter-spacing: -.01em; text-transform: none; margin: 0; white-space: nowrap; }
+header h1 span { color: var(--accent); }
+.hspace { flex: 1; }
+header .pill { font: 600 12px var(--body); border: 0; background: var(--soft); color: var(--muted); padding: 6px 10px; }
+header .pill.on { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+#conn::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: currentColor; margin-right: 6px; vertical-align: 1px; }
+#btnConnect { padding: 8px 14px; font-size: 13px; }
+@media (max-width: 430px) { #bat { display: none; } }
+/* bottom tab bar */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; max-width: none; margin: 0; display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 0; padding: 6px max(8px, env(safe-area-inset-left)) max(10px, env(safe-area-inset-bottom)); background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-top: 1px solid var(--line); overflow: visible; }
+.tabs button, .tabs button[aria-selected="true"] { background: transparent; border: 0; box-shadow: none; display: grid; justify-items: center; gap: 3px;
+  padding: 6px 2px; color: var(--muted); font: 600 10.5px var(--body); letter-spacing: 0; text-transform: none; border-radius: 10px; }
+.tabs svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tabs button[aria-selected="true"] { color: var(--accent); }
+.tabs button:hover { transform: none; }
+.wrap { padding-bottom: calc(110px + env(safe-area-inset-bottom, 0px)); gap: 14px; }
+/* cards */
+.panel { background: var(--panel); border: 0; border-radius: 20px; padding: 18px; box-shadow: none; gap: 14px; }
+.panel .panel { background: var(--soft); }
+h2 { font: 600 12px/1.2 var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h3 { font-family: var(--display); letter-spacing: -.01em; text-transform: none; }
+.which, .note, .empty { color: var(--muted); }
+/* buttons and inputs */
+button { background: var(--soft); border: 0; border-radius: 12px; color: var(--ink); padding: 10px 14px; font: 600 14px var(--body); transition: transform .12s, background .15s; }
+button:hover { border-color: transparent; transform: none; background: color-mix(in srgb, var(--soft) 80%, var(--ink)); }
+button:active { transform: scale(.97); }
+button.primary, .arm { background: var(--accent); color: var(--accent-ink); border: 0; }
+button.primary:hover, .arm:hover { background: color-mix(in srgb, var(--accent) 88%, #fff); }
+.arm { border-radius: 16px; padding: 15px 20px; font: 700 17px var(--body); letter-spacing: 0; text-transform: none; }
+.arm[aria-pressed="true"] { background: var(--warn); color: #fff; }
+button.back { background: transparent; color: var(--muted); padding: 4px 0; font: 600 13px var(--body); letter-spacing: 0; text-transform: none; }
+.field input, .field select, .inp, textarea, select, input[type=number], input[type=text] { background: var(--soft); border: 1px solid transparent; border-radius: 12px; color: var(--ink); }
+.chips { background: var(--soft); border-radius: 12px; padding: 3px; }
+.chips button { border-radius: 9px; background: transparent; padding: 7px 12px; }
+.chips button[aria-pressed="true"] { background: var(--ink); color: var(--bg); box-shadow: none; }
+.msg { border: 0; border-radius: 14px; background: var(--soft); }
+/* start-set card */
+.dock { background: var(--panel); border: 0; border-radius: 20px; }
+.dockinfo b { font: 700 22px/1.15 var(--display); letter-spacing: -.01em; text-transform: none; }
+.dockinfo span { font: 600 12px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+/* live readout: big number inside a speed ring */
+#liveBox .live { grid-template-columns: 1fr; gap: 18px; justify-items: center; background: none; border: 0; box-shadow: none; padding: 0; }
+#liveBox .live > div:first-child { width: min(68vw, 260px); aspect-ratio: 1; border-radius: 50%; display: grid; place-content: center; justify-items: center; gap: 6px;
+  background: radial-gradient(closest-side, var(--panel) 86%, transparent 87% 100%), conic-gradient(var(--zc, var(--line)) calc(var(--mvp, 0) * 1%), var(--soft) 0); transition: background .4s; }
+#liveBox .live > div:first-child > div:first-child { display: flex; align-items: baseline; gap: 4px; }
+.num { font: 800 clamp(58px, 17vw, 84px)/1 var(--display); letter-spacing: -.03em; color: var(--ink); }
+.unit { font: 600 15px var(--body); color: var(--muted); }
+.zone { font: 700 12px var(--body); letter-spacing: .08em; text-transform: uppercase; color: var(--zc, var(--muted)); }
+.zone .dot { display: none; }
+#liveBox .stats { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.stat { border: 0; background: var(--soft); border-radius: 14px; padding: 10px 11px; }
+.stat small { font: 600 10.5px var(--body); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); display: block; line-height: 1.25; }
+.stat b { font: 700 19px/1.2 var(--display); letter-spacing: -.01em; margin-top: 3px; }
+.stat.alert { background: color-mix(in srgb, var(--warn) 18%, var(--soft)); }
+.stat.alert b { color: var(--warn); }
+/* tables, plan, cards */
+table { border-collapse: collapse; }
+th { font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-color: var(--line); }
+td { border-color: var(--line); font-variant-numeric: tabular-nums; }
+tr.next td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+tr.rec td { background: color-mix(in srgb, var(--warn) 12%, transparent); }
+.ex { background: transparent; border: 0; padding: 0; }
+.exhead h3, .ex h3 { font: 700 17px var(--display); text-transform: none; letter-spacing: -.01em; }
+.dayhead h3 { font: 800 24px/1.1 var(--display); text-transform: none; letter-spacing: -.02em; }
+.daynum { font: 800 34px/1 var(--display); color: var(--accent); }
+.daycard, .exmini, details.exacc > summary { background: var(--soft); border: 0; border-radius: 16px; }
+.daycard b, .exmini b, details.exacc > summary b { font: 700 16px var(--display); text-transform: none; letter-spacing: -.01em; }
+.daycard.upnext { box-shadow: 0 0 0 2px var(--accent); }
+.daycard.done .daynum { color: var(--muted); }
+.mstats > div, .edex { border: 0; background: var(--soft); border-radius: 14px; }
+.mstats small, .tnext small { letter-spacing: .05em; }
+.mstats b { font: 700 19px var(--display); }
+.tnext { background: var(--soft); border: 0; border-left: 0; border-radius: 16px; box-shadow: inset 3px 0 0 var(--accent); }
+.tchecks span { border: 0; background: var(--soft); }
+.tchecks span.ok { background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.tbar { background: var(--soft); } .tbar i { background: var(--accent); }
+svg text { font-family: var(--body); }
+.legend span { font: 600 11px var(--body); color: var(--muted); }
+details.help > summary { color: var(--muted); }
+
+/* v3 typography clean-up: no condensed caps, no monospace in the UI */
+h3, .daycard b, .dockinfo b, .sname, .exmini b, details.exacc > summary b, .weekgrp summary, .weekgrp b { font-family: var(--display); text-transform: none; letter-spacing: -.01em; }
+.sname { font-weight: 700; font-size: 16px; }
+td, td.vel small, .acc span:last-child, .daycard .st, .chip, .smeta, .pill, .edgrid .inp, .field input[type=number], .legend span { font-family: var(--body); font-variant-numeric: tabular-nums; }
+td { font-size: 14px; font-weight: 500; }
+.daycard .st { font-size: 12px; font-weight: 500; }
+.back { font-family: var(--body); text-transform: none; letter-spacing: 0; }
+pre { font-family: var(--mono); }
+.pitem { background: var(--soft); border: 0; border-radius: 16px; }
+.pitem.on { box-shadow: 0 0 0 2px var(--accent); }
 </style>
 </head>
 <body>
 <header class="gut">
   <div class="bar">
-    <h1>VBT <span>Puck</span></h1>
+    <h1>VBT <span>Puck</span></h1><span class="hspace"></span>
     <span id="conn" class="pill">Not connected</span>
     <span id="bat" class="pill">Battery –</span>
     <span id="hrPill" class="pill" hidden>♥ –</span>
     <button id="btnConnect" class="primary">Connect puck</button>
   </div>
-  <nav class="tabs" role="tablist">
-    <button role="tab" data-tab="train" aria-selected="true">Train</button>
-    <button role="tab" data-tab="program" aria-selected="false">Program</button>
-    <button role="tab" data-tab="history" aria-selected="false">History</button>
-    <button role="tab" data-tab="whoop" aria-selected="false">WHOOP</button>
-    <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
-  </nav>
 </header>
 
 <main class="wrap gut">
@@ -683,11 +784,18 @@ details.tfold[open] { display: grid; gap: 10px; }
     </section>
 
     <section class="panel" id="syncBox">
-      <div class="head"><h2>Live link to Google Sheets</h2><span class="which" id="syncStatus">Not linked</span></div>
-      <details class="help"><summary>What this does</summary><p class="note">Paste the web app link and key from the sync script in your sheet. The app then loads your program from the sheet every time you open it, and writes each finished set's velocity and load back into its row.</p></details>
+      <div class="head"><h2>Coach's Google Sheet</h2><span class="which" id="syncStatus">Not linked</span></div>
+      <p class="note">Loads your program straight from your coach's sheet every time the app opens, so new weeks and load changes show up by themselves. View access to the sheet is enough.</p>
+      <details class="help"><summary>How to set it up (once, about 5 minutes)</summary><ol class="note steps">
+        <li>On a computer, go to <b>script.google.com</b> → <b>New project</b>, and paste in the <b>VBT_coach_sheet_reader</b> script.</li>
+        <li>Put your coach's sheet link in <b>SHEET_URL</b> at the top.</li>
+        <li>Pick <b>testRead</b> and press <b>Run</b>. Allow access when Google asks. The log lists the weeks it found.</li>
+        <li><b>Deploy → New deployment → Web app</b>, Execute as <b>Me</b>, access <b>Anyone</b>. Copy the link ending in <b>/exec</b>.</li>
+        <li>Paste that link and the script's <b>KEY</b> below, then tap <b>Link and load program</b>.</li></ol>
+        <p class="note">If you can edit the sheet, the app can also write each set's velocity into its VEL cell. If you can only view it, velocities stay in the app.</p></details>
       <label class="field" for="syncUrl" style="display:grid;gap:4px">Web app link <input id="syncUrl" class="inp" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
-      <label class="field" for="syncKey" style="display:grid;gap:4px">Key <input id="syncKey" class="inp" placeholder="vbt-…" autocomplete="off"></label>
-      <div class="toggles"><label for="syncWrite"><input type="checkbox" id="syncWrite" checked> Write velocity and load into the sheet</label></div>
+      <label class="field" for="syncKey" style="display:grid;gap:4px">Key <input id="syncKey" class="inp" placeholder="coach-… or vbt-…" autocomplete="off"></label>
+      <div class="toggles"><label for="syncWrite" id="syncWriteLbl"><input type="checkbox" id="syncWrite" checked> Write velocity and load into the sheet</label></div>
       <div class="row"><button id="btnLink" class="primary">Link and load program</button><button id="btnRefresh">Refresh now</button><button id="btnUnlink">Unlink</button></div>
     </section>
 
@@ -720,6 +828,14 @@ details.tfold[open] { display: grid; gap: 10px; }
     </section>
   </div>
 </main>
+
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="train" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5v11M17.5 6.5v11M3 9v6M21 9v6M6.5 12h11"/></svg><span>Train</span></button>
+    <button role="tab" data-tab="program" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg><span>Program</span></button>
+    <button role="tab" data-tab="history" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V9M10 19V5M16 19v-7M22 19H2"/></svg><span>History</span></button>
+    <button role="tab" data-tab="whoop" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg><span>Recovery</span></button>
+    <button role="tab" data-tab="settings" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg><span>Settings</span></button>
+  </nav>
 
 <script>
 const SVC = "6e7c0001-5a1d-4c2b-9f3e-1b2a3c4d5e6f";
@@ -1246,13 +1362,14 @@ function renderLive() {
     $("mv").textContent = rep.mv.toFixed(2);
     const [c, name] = zone(rep.mv);
     $("zone").innerHTML = `<span class="dot" style="background:var(${c})"></span>${name}`;
+    $("liveBox").style.setProperty("--zc", `var(${c})`); $("liveBox").style.setProperty("--mvp", Math.min(100, Math.round(rep.mv / 1.2 * 100)));
     $("pv").textContent = rep.pv.toFixed(2) + " m/s";
     $("rom").textContent = Math.round(rep.rom * 100) + " cm";
     $("vl").textContent = rep.vl + " %"; $("vlBox").classList.toggle("alert", rep.vl >= cut);
     const dd = drift(shownPath(rep, set.lift)); $("dx").textContent = dd == null ? "–" : (dd / 10).toFixed(1) + " cm";
     $("phases").textContent = rep.tut != null ? `${rep.ecc.toFixed(1)} · ${rep.pause.toFixed(1)} · ${rep.t.toFixed(1)} s` : "–";
     $("tiltv").textContent = rep.tilt != null ? `${Math.abs(rep.tilt).toFixed(1)}°` : "–";
-  } else ["mv", "pv", "rom", "vl", "dx", "phases", "tiltv"].forEach(id => $(id).textContent = "–");
+  } else { ["mv", "pv", "rom", "vl", "dx", "phases", "tiltv"].forEach(id => $(id).textContent = "–"); $("liveBox").style.setProperty("--mvp", 0); }
   $("setTitle").textContent = set ? `${set.name}${set.label ? " · " + set.label : ""} · ${kg(set.load)} kg` : "Current set";
   $("demoTag").hidden = !(set && set.demo);
   drawChart(set, rep, cut); drawPath(set, rep);
@@ -1508,7 +1625,8 @@ function renderProgram() {
   $("plist").innerHTML = programs.map(p => `<div class="pitem${p.id === activePid ? " on" : ""}"><div><b>${esc(p.name)}</b><div class="which">${p.weeks.length} weeks</div></div>
     <div class="row">${p.id === activePid ? `<span class="tag" style="color:var(--ok)">In use</span>` : `<button data-use="${p.id}">Use</button>`}<button data-ren="${p.id}">Rename</button><button data-delp="${p.id}" class="x" aria-label="Delete ${esc(p.name)}">✕</button></div></div>`).join("")
     || `<p class="empty">No programs yet. Import a week from Sheets or tap New program.</p>`;
-  $("syncUrl").value = sync.url; $("syncKey").value = sync.key; $("syncWrite").checked = sync.write !== false; setSyncStatus(syncLabel());
+  $("syncUrl").value = sync.url; $("syncKey").value = sync.key; $("syncWrite").checked = sync.write !== false && !sync.readonly; $("syncWrite").disabled = !!sync.readonly;
+  $("syncWriteLbl").lastChild.textContent = sync.readonly ? " Write velocity into the sheet (needs edit access: you can only view this one)" : " Write velocity and load into the sheet"; setSyncStatus(syncLabel());
   const p = prog();
   $("maxS").value = p ? p.maxes.Squat || "" : ""; $("maxB").value = p ? p.maxes.Bench || "" : ""; $("maxD").value = p ? p.maxes.Deadlift || "" : "";
   $("builder").hidden = !p;
@@ -1711,6 +1829,7 @@ async function pullProgram(first) {
     if (first) { activePid = "sheet"; const u = (() => { wk = 0; dy = 0; return upNextDay(); })(); if (u) { wk = u.w; dy = u.d; } }
     if (activePid === "sheet") { if (!p.weeks[wk]) wk = 0; if (!p.weeks[wk].days[dy]) dy = 0; }
     sync.last = new Date().toISOString(); bDraft = null;
+    if (data.canEdit === false) { sync.readonly = true; sync.write = false; queue = []; } else if (data.canEdit === true) sync.readonly = false;
     if (!active) pickNext();
     save(); render(false);
     if (first) msg(`Linked to “${p.name}”: ${p.weeks.length} week${p.weeks.length === 1 ? "" : "s"} loaded.`, "good");
@@ -1750,6 +1869,7 @@ async function flushQueue() {
         const res = await fetch(sync.url, { method: "POST", body: JSON.stringify({ key: sync.key, ...item }), redirect: "follow" });
         data = await res.json();
       } catch (e) { break; }                       // offline: try again later
+      if (data.readonly) { queue = []; sync.write = false; sync.readonly = true; save(); msg("Your coach's sheet is view-only for you, so velocities stay in the app.", "good"); break; }
       if (data.error) { msg(`Couldn't write to the sheet: ${data.error}`, true); queue.push(queue.shift()); break; }
       queue.shift(); save();
     }
